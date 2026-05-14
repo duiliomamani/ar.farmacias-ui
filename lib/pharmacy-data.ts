@@ -6,6 +6,12 @@ export interface Shift {
   isOnDuty: boolean;
 }
 
+export interface CommunityReport {
+  isOnDuty: boolean;
+  confidence: number;
+  createdAt: string;
+}
+
 export interface Pharmacy {
   id: string;
   name: string;
@@ -27,6 +33,7 @@ export interface Pharmacy {
   veracityScore?: number; 
   city?: string;
   shifts: Shift[]; 
+  communityReports?: CommunityReport[];
 }
 
 // ... (mockPharmacies remains the same for now, but will need updating to fit the new structure if used)

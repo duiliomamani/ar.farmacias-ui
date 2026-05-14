@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
-import { Navigation, CheckCircle2, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { Navigation, CheckCircle2, AlertTriangle, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import 'leaflet/dist/leaflet.css'
@@ -32,6 +32,7 @@ interface PharmacyMapProps {
   center: [number, number]
   selectedPharmacy?: Pharmacy | null
   onSelectPharmacy?: (pharmacy: Pharmacy) => void
+  userLocation?: [number, number] | null
   className?: string
 }
 
@@ -40,6 +41,7 @@ function PharmacyMapContent({
   center,
   selectedPharmacy,
   onSelectPharmacy,
+  userLocation,
   className,
 }: PharmacyMapProps) {
   const mapRef = useRef<L.Map | null>(null)
@@ -118,6 +120,23 @@ function PharmacyMapContent({
     })
   }
 
+  const createUserLocationIcon = () => {
+    if (typeof window === 'undefined') return undefined
+    const L = require('leaflet')
+    
+    return L.divIcon({
+      className: 'user-location-marker',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 bg-blue-500 rounded-full animate-ping opacity-25"></div>
+          <div class="relative w-4 h-4 bg-blue-600 border-2 border-white rounded-full shadow-lg"></div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    })
+  }
+
   const handleNavigate = (pharmacy: Pharmacy) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.lat},${pharmacy.lng}`
     window.open(url, '_blank')
@@ -138,6 +157,11 @@ function PharmacyMapContent({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        {userLocation && (
+          <Marker position={userLocation} icon={createUserLocationIcon()} zIndexOffset={1000} />
+        )}
+
         {pharmacies.map((pharmacy) => (
           <Marker
             key={pharmacy.id}

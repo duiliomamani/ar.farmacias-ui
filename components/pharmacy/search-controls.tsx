@@ -30,8 +30,6 @@ interface SearchControlsProps {
 }
 
 export function SearchControls({
-  searchQuery,
-  onSearchChange,
   radius,
   onRadiusChange,
   onUseMyLocation,
@@ -41,7 +39,7 @@ export function SearchControls({
   onlyOnDuty,
   onOnlyOnDutyChange,
   className,
-}: SearchControlsProps) {
+}: Omit<SearchControlsProps, 'searchQuery' | 'onSearchChange'>) {
   return (
     <div className={cn("space-y-4", className)}>
       {/* Date & On-Duty Toggle Row */}
@@ -83,26 +81,17 @@ export function SearchControls({
             />
           </div>
         </div>
-      </div>
 
-      {/* Search Input with Auto-detect */}
-      <div className="relative group">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" strokeWidth={2.5} />
-        <Input
-          type="text"
-          placeholder="Buscar ciudad o farmacia..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 pr-10 h-12 bg-card border-border shadow-sm focus-visible:ring-primary/20"
-        />
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={onUseMyLocation}
           disabled={isLocating}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
-          title="Usar mi ubicación"
+          className="h-10 w-10 shrink-0 bg-card border-border shadow-sm text-primary hover:bg-primary/5"
+          title="Mi ubicación"
         >
           <Crosshair className={cn("h-5 w-5", isLocating && "animate-spin")} strokeWidth={2.5} />
-        </button>
+        </Button>
       </div>
 
       {/* Radius Slider */}

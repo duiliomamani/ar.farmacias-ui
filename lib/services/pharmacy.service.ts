@@ -40,6 +40,7 @@ function mapBackendPharmacy(item: any): Pharmacy {
     veracityScore: item.veracityScore || 100,
     city: item.city,
     shifts: item.shifts || [],
+    communityReports: item.communityReports || [],
   };
 }
 
