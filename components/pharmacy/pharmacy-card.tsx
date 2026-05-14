@@ -9,6 +9,7 @@ import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn, getDeviceId } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { PharmacyService } from '@/lib/api'
+import { useAuth } from '@/components/auth/auth-context'
 
 interface PharmacyCardProps {
   pharmacy: Pharmacy
@@ -19,6 +20,7 @@ interface PharmacyCardProps {
 
 export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardProps) {
   const { toast } = useToast()
+  const { isAuthenticated } = useAuth()
   const [isReporting, setIsReporting] = useState(false)
 
   const handleNavigate = () => {
@@ -182,29 +184,31 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
           </div>
           
           {/* Quick Feedback Section */}
-          <div className="flex flex-col gap-1 mt-1.5 pt-1.5 border-t border-border/60">
-             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">¿Está abierta?</span>
-             <div className="flex items-center gap-1.5">
-               <Button 
-                 size="sm" 
-                 variant="outline" 
-                 className="flex-1 h-7 text-[9px] gap-1 bg-green-50/50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 font-bold uppercase"
-                 disabled={isReporting}
-                 onClick={(e) => { e.stopPropagation(); handleQuickReport(true); }}
-               >
-                  {isReporting ? <Loader2 className="w-2.5 h-2.5 animate-spin"/> : <ThumbsUp className="w-2.5 h-2.5"/>} Sí, está abierta
-               </Button>
-               <Button 
-                 size="sm" 
-                 variant="outline" 
-                 className="flex-1 h-7 text-[9px] gap-1 bg-red-50/50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 font-bold uppercase"
-                 disabled={isReporting}
-                 onClick={(e) => { e.stopPropagation(); handleQuickReport(false); }}
-               >
-                  {isReporting ? <Loader2 className="w-2.5 h-2.5 animate-spin"/> : <ThumbsDown className="w-2.5 h-2.5"/>} No, está cerrada
-               </Button>
-             </div>
-          </div>
+          {isAuthenticated && (
+            <div className="flex flex-col gap-1 mt-1.5 pt-1.5 border-t border-border/60">
+               <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">¿Está abierta?</span>
+               <div className="flex items-center gap-1.5">
+                 <Button 
+                   size="sm" 
+                   variant="outline" 
+                   className="flex-1 h-7 text-[9px] gap-1 bg-green-50/50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 font-bold uppercase"
+                   disabled={isReporting}
+                   onClick={(e) => { e.stopPropagation(); handleQuickReport(true); }}
+                 >
+                    {isReporting ? <Loader2 className="w-2.5 h-2.5 animate-spin"/> : <ThumbsUp className="w-2.5 h-2.5"/>} Sí, está abierta
+                 </Button>
+                 <Button 
+                   size="sm" 
+                   variant="outline" 
+                   className="flex-1 h-7 text-[9px] gap-1 bg-red-50/50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 font-bold uppercase"
+                   disabled={isReporting}
+                   onClick={(e) => { e.stopPropagation(); handleQuickReport(false); }}
+                 >
+                    {isReporting ? <Loader2 className="w-2.5 h-2.5 animate-spin"/> : <ThumbsDown className="w-2.5 h-2.5"/>} No, está cerrada
+                 </Button>
+               </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { type Pharmacy } from "@/lib/pharmacy-data"
+import { useAuth } from "@/components/auth/auth-context"
 
 const PROVINCES = [
   'Buenos Aires', 'CABA', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba', 
@@ -61,6 +62,7 @@ interface ContributeDataModalProps {
 }
 
 export function ContributeDataModal({ selectedPharmacy }: ContributeDataModalProps) {
+  const { isAuthenticated } = useAuth()
   const [open, setOpen] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
@@ -104,6 +106,10 @@ export function ContributeDataModal({ selectedPharmacy }: ContributeDataModalPro
   }
 
   const isSuggestionValid = cityName.trim() && province && (sourceLink.trim() || fileName)
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={(val) => { setOpen(val); if(!val) resetForm() }}>
