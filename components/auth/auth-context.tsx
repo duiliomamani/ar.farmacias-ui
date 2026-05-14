@@ -3,12 +3,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { jwtDecode } from 'jwt-decode'
 import { useRouter } from 'next/navigation'
+import { AuthService } from '@/lib/api'
 
 interface User {
   id: string
   email: string
   displayName: string
-  avatarUrl: string
+  avatarUrl?: string
   role: string
   trustScore: number
 }
@@ -19,6 +20,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (token: string) => void
   logout: () => void
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -27,6 +29,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+
+  const refreshProfile = useCallback(async () => {
+    try {
+      const profile = await AuthService.getProfile()
+      setUser(prev => prev ? { 
+        ...prev, 
+        displayName: profile.displayName,
+        role: profile.role,
+        trustScore: profile.trustScore 
+      } : {
+        id: profile.id,
+        email: profile.email,
+        displayName: profile.displayName,
+        role: profile.role,
+        trustScore: profile.trustScore
+      })
+    } catch (error) {
+      console.error('Failed to fetch latest profile:', error)
+    }
+  }, [])
 
   const decodeAndSetUser = useCallback((token: string) => {
     try {
@@ -39,12 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: decoded.role,
         trustScore: decoded.trustScore || 0,
       })
+      // Actualizar con datos frescos del servidor (incluyendo el trustScore real)
+      refreshProfile()
       return true
     } catch (error) {
       console.error('Failed to decode token:', error)
       return false
     }
-  }, [])
+  }, [refreshProfile])
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token')
@@ -69,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )
