@@ -115,9 +115,15 @@ export function PharmacyFinder() {
   }, [groupedPharmacies, searchQuery, selectedPharmacy, isLocating])
 
   // Filter and sort pharmacies (local filtering for on-duty and radius)
-  const filteredPharmacies = sortPharmacies(
-    filterPharmacies(groupedPharmacies, radius)
-  ).filter(p => !onlyOnDuty || p.isOnDuty)
+  const filteredPharmacies = useMemo(() => {
+    let result = filterPharmacies(groupedPharmacies, radius);
+    
+    if (onlyOnDuty) {
+      result = result.filter(p => p.isOnDuty);
+    }
+    
+    return sortPharmacies(result);
+  }, [groupedPharmacies, radius, onlyOnDuty]);
 
   const isLoading = isDataLoading || isLocating
 

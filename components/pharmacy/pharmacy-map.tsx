@@ -176,16 +176,29 @@ function PharmacyMapContent({
                       )}
                     >
                       {pharmacy.isOnDuty 
-                        ? (pharmacy.openingHours || (pharmacy.closingTime 
-                            ? `Abierta hasta las ${new Date(pharmacy.closingTime).toLocaleTimeString('es-AR', { 
-                                timeZone: 'America/Argentina/Buenos_Aires', 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}hs` 
-                            : 'Abierta ahora'))
+                        ? (pharmacy.isPermanentlyOnDuty || pharmacy.openingHours?.toLowerCase().includes('24hs')
+                            ? 'Atención Permanente 24hs'
+                            : (() => {
+                                if (!pharmacy.dutyUntil) return 'Abierta ahora';
+                                const until = new Date(pharmacy.dutyUntil);
+                                const now = new Date();
+                                const isTomorrow = until.getDate() !== now.getDate();
+                                const timeStr = until.toLocaleTimeString('es-AR', { 
+                                  timeZone: 'America/Argentina/Buenos_Aires', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                }) + 'hs';
+                                return isTomorrow ? `De Turno hasta mañana ${timeStr}` : `De Turno hasta las ${timeStr}`;
+                              })())
                         : 'Cerrada ahora'}
                     </Badge>
                   </div>
+
+                  {pharmacy.openingHours && !pharmacy.openingHours.toLowerCase().includes('24hs') && (
+                    <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest -mt-1 px-1">
+                      {pharmacy.openingHours}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 bg-muted/30 px-2 py-1.5 rounded-lg border border-border/50">
                     <span>Distancia</span>

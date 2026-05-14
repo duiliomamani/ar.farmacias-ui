@@ -97,11 +97,27 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
                 )}
               >
                 {pharmacy.isOnDuty
-                  ? (pharmacy.openingHours || (pharmacy.closingTime
-                      ? `Abierto hasta las ${new Date(pharmacy.closingTime).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })}hs`
-                      : 'Abierto ahora'))
+                  ? (pharmacy.isPermanentlyOnDuty || pharmacy.openingHours?.toLowerCase().includes('24hs')
+                      ? 'Atención Permanente 24hs'
+                      : (() => {
+                          if (!pharmacy.dutyUntil) return 'Abierta ahora';
+                          const until = new Date(pharmacy.dutyUntil);
+                          const now = new Date();
+                          const isTomorrow = until.getDate() !== now.getDate();
+                          const timeStr = until.toLocaleTimeString('es-AR', { 
+                            timeZone: 'America/Argentina/Buenos_Aires', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          }) + 'hs';
+                          return isTomorrow ? `De Turno hasta mañana ${timeStr}` : `De Turno hasta las ${timeStr}`;
+                        })())
                   : 'Cerrado temporalmente'}
               </Badge>
+              {pharmacy.openingHours && !pharmacy.openingHours.toLowerCase().includes('24hs') && (
+                <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest ml-1">
+                  • {pharmacy.openingHours}
+                </span>
+              )}
               {pharmacy.lastConfirmed && (
                 <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 italic">
                   <Check className="h-3 w-3 text-green-500" />
