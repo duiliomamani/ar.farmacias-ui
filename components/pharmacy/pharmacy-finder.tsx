@@ -49,7 +49,7 @@ export function PharmacyFinder() {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
-
+  
   // New Filter States
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [onlyOnDuty, setOnlyOnDuty] = useState(true)
@@ -66,7 +66,7 @@ export function PharmacyFinder() {
 
   const handleUseMyLocation = useCallback(() => {
     setIsLocating(true)
-
+    
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -105,21 +105,22 @@ export function PharmacyFinder() {
   const groupedPharmacies = useMemo(() => {
     const grouped = groupPharmacies(rawPharmacies);
     const center = userLocation || mapCenter
-
+    
     // Recalculate distance based on actual user location
     return grouped.map(p => ({
       ...p,
       distance: calculateDistance(center[0], center[1], p.lat, p.lng)
     }));
   }, [rawPharmacies, userLocation, mapCenter]);
+
   // Filter and sort pharmacies (local filtering for on-duty and radius)
   const filteredPharmacies = useMemo(() => {
     let result = filterPharmacies(groupedPharmacies, radius);
-
+    
     if (onlyOnDuty) {
       result = result.filter(p => p.isOnDuty);
     }
-
+    
     return sortPharmacies(result);
   }, [groupedPharmacies, radius, onlyOnDuty]);
 
@@ -149,9 +150,9 @@ export function PharmacyFinder() {
               <span className="font-heading font-black text-foreground tracking-tighter text-lg">FarmaYa AR</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
+              <Button 
+                variant="ghost" 
+                size="icon" 
                 className="h-8 w-8 text-muted-foreground hover:text-primary"
                 onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
               >
@@ -187,7 +188,7 @@ export function PharmacyFinder() {
                 center={mapCenter}
                 selectedPharmacy={selectedPharmacy}
                 onSelectPharmacy={handleSelectPharmacy}
-                userLocation={isLocating ? null : mapCenter}
+                userLocation={isLocating ? null : userLocation}
               />
             </div>
 
@@ -247,23 +248,24 @@ export function PharmacyFinder() {
           </div>
           <div className="flex flex-col">
             <h1 className="text-lg font-heading font-black text-foreground tracking-tighter leading-tight">FarmaYa AR</h1>
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Centro de Emergencias Nacional</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="bg-muted/50 rounded-lg p-1 flex items-center shadow-inner border">
-            <Button
-              variant={viewMode === 'map' ? 'default' : 'ghost'}
-              size="sm"
+            <Button 
+              variant={viewMode === 'map' ? 'default' : 'ghost'} 
+              size="sm" 
               className={cn("h-8 px-4 gap-2 text-xs font-bold transition-all", viewMode === 'map' && "shadow-sm")}
               onClick={() => setViewMode('map')}
             >
               <MapIcon className="h-3.5 w-3.5" />
               Mapa
             </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
+            <Button 
+              variant={viewMode === 'list' ? 'default' : 'ghost'} 
+              size="sm" 
               className={cn("h-8 px-4 gap-2 text-xs font-bold transition-all", viewMode === 'list' && "shadow-sm")}
               onClick={() => setViewMode('list')}
             >
@@ -271,7 +273,7 @@ export function PharmacyFinder() {
               Lista
             </Button>
           </div>
-
+          
           <div className="h-8 w-px bg-border mx-2" />
 
           <div className="flex items-center gap-2">
@@ -323,7 +325,7 @@ export function PharmacyFinder() {
               center={mapCenter}
               selectedPharmacy={selectedPharmacy}
               onSelectPharmacy={handleSelectPharmacy}
-              userLocation={isLocating ? null : mapCenter}
+              userLocation={isLocating ? null : userLocation}
             />
           </div>
         )}
