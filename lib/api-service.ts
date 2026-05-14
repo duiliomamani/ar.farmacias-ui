@@ -31,11 +31,11 @@ export interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-interface ApiErrorResponse {
-  isSuccessful: false;
-  code?: string;
-  message: string | string[];
-  statusCode?: number;
+interface ApiResponse<T> {
+  data: T;
+  isSuccessful: boolean;
+  errors: string[];
+  message?: string;
 }
 
 async function fetchAccessToken(): Promise<string> {
@@ -105,11 +105,9 @@ export class ApiService {
         return {} as T;
       }
 
-      const data = await response.json();
+      const responseData = await response.json() as ApiResponse<T>;
 
-      if (!response.ok) {
-        const error = data as ApiErrorResponse;
-
+      if (!response.ok || !responseData.isSuccessful) {
         if (typeof window !== 'undefined') {
           if (response.status === 401) {
             toast.error('Sesión expirada');
@@ -117,26 +115,28 @@ export class ApiService {
             window.location.href = '/';
           } else if (response.status === 403) {
             toast.error('No tienes permiso');
-          } else if (response.status === 400) {
-            const errorMsg = Array.isArray(error.message)
-              ? error.message.join(' | ')
-              : (error.message || 'Datos inválidos');
-            toast.error(`Error de validación: ${errorMsg}`);
+          } else if (response.status === 400 || !responseData.isSuccessful) {
+            const errorMsg = responseData.errors?.length > 0
+              ? responseData.errors.join(' | ')
+              : (responseData.message || 'Datos inválidos');
+            toast.error(`Error: ${errorMsg}`);
           } else if (response.status >= 500) {
             toast.error('Ha ocurrido un error en los servidores. Nuestro equipo ha sido notificado.');
           }
         }
 
-        const errorMessage = Array.isArray(error.message) ? error.message.join(', ') : error.message;
+        const errorMessage = responseData.errors?.length > 0 
+          ? responseData.errors.join(', ') 
+          : (responseData.message || 'Error desconocido del servidor');
 
         throw new ApiClientError(
-          error.statusCode || response.status,
-          error.code || 'UNKNOWN_ERROR',
-          errorMessage || 'Error desconocido del servidor'
+          response.status,
+          'API_ERROR',
+          errorMessage
         );
       }
 
-      return data as T;
+      return responseData.data;
     } catch (error) {
       if (error instanceof AuthenticationError && typeof window !== 'undefined') {
         toast.error('Sesión expirada');
