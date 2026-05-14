@@ -70,6 +70,34 @@ function PharmacyMapContent({
     let iconPath = '<path d="M18 6 6 18M6 6l12 12"/>' // X icon for closed
     let extraClass = ''
 
+    // Community Report Logic for Icon
+    const latestReport = pharmacy.communityReports?.[0];
+    let badgeHtml = '';
+    
+    if (latestReport && !latestReport.isOnDuty) {
+      // Reported closed recently
+      badgeHtml = `
+        <div style="position: absolute; top: -2px; right: -2px; background: #ea580c; border: 2px solid white; border-radius: 50%; width: 16px; height: 16px; display: flex; items-center; justify-center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+          <span style="color: white; font-size: 10px; font-weight: bold; transform: translateY(-1px);">!</span>
+        </div>
+      `;
+      extraClass += ' reported-closed-glow';
+    } else {
+      const recentVerifiedReport = pharmacy.communityReports?.find(
+        (r) => r.isOnDuty && (Date.now() - new Date(r.createdAt).getTime()) < 2 * 60 * 60 * 1000
+      );
+      if (recentVerifiedReport) {
+        // Confirmed open recently
+        badgeHtml = `
+          <div style="position: absolute; top: -2px; right: -2px; background: #16a34a; border: 2px solid white; border-radius: 50%; width: 16px; height: 16px; display: flex; items-center; justify-center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+        `;
+      }
+    }
+
     if (pharmacy.isOnDuty) {
       color = '#22c55e' // Green (Open)
       iconPath = '<path d="M12 2v20M2 12h20"/>' // Cross
@@ -112,6 +140,7 @@ function PharmacyMapContent({
           <svg width="${size * 0.5}" height="${size * 0.5}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             ${iconPath}
           </svg>
+          ${badgeHtml}
         </div>
       `,
       iconSize: [size, size],
@@ -223,6 +252,33 @@ function PharmacyMapContent({
                       {pharmacy.openingHours}
                     </p>
                   )}
+
+                  {/* Community Report Message in Popup */}
+                  {(() => {
+                    const latestReport = pharmacy.communityReports?.[0];
+                    if (latestReport && !latestReport.isOnDuty) {
+                      const minutes = Math.floor((Date.now() - new Date(latestReport.createdAt).getTime()) / 60000);
+                      const timeStr = minutes >= 60 ? `${Math.floor(minutes / 60)} hs` : `${minutes} min`;
+                      return (
+                        <div className="bg-orange-50 text-orange-700 border-orange-200 border px-2 py-1.5 rounded-lg text-[9px] font-bold flex items-center gap-1.5 animate-pulse">
+                          <span>⚠️</span> Reportada como cerrada hace {timeStr}
+                        </div>
+                      );
+                    }
+                    const recentVerifiedReport = pharmacy.communityReports?.find(
+                      (r) => r.isOnDuty && (Date.now() - new Date(r.createdAt).getTime()) < 2 * 60 * 60 * 1000
+                    );
+                    if (recentVerifiedReport) {
+                      const minutes = Math.floor((Date.now() - new Date(recentVerifiedReport.createdAt).getTime()) / 60000);
+                      const timeStr = minutes >= 60 ? `${Math.floor(minutes / 60)} hs` : `${minutes} min`;
+                      return (
+                        <div className="bg-green-50 text-green-700 border-green-200 border px-2 py-1.5 rounded-lg text-[9px] font-bold flex items-center gap-1.5">
+                          <span>✅</span> Confirmada por la comunidad hace {timeStr}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 bg-muted/30 px-2 py-1.5 rounded-lg border border-border/50">
                     <span>Distancia</span>
