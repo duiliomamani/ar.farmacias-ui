@@ -14,7 +14,7 @@ export class AuthService {
   }
 
   static async getProfile(): Promise<UserProfile> {
-    return ApiService.get<UserProfile>('/api/users/profile');
+    return ApiService.request<UserProfile>('/api/users/profile');
   }
 }
 
