@@ -46,6 +46,7 @@ export function PharmacyFinder() {
   const [isLocating, setIsLocating] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number]>([-34.6037, -58.3816])
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
 
@@ -69,7 +70,9 @@ export function PharmacyFinder() {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setMapCenter([position.coords.latitude, position.coords.longitude])
+          const coords: [number, number] = [position.coords.latitude, position.coords.longitude]
+          setMapCenter(coords)
+          setUserLocation(coords)
           setIsLocating(false)
         },
         (error) => {
@@ -89,10 +92,11 @@ export function PharmacyFinder() {
 
   // Data Fetching
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
-    queryKey: ['pharmacies', mapCenter, radius, selectedDate],
+    queryKey: ['pharmacies', userLocation || mapCenter, radius, selectedDate],
     queryFn: async () => {
+      const center = userLocation || mapCenter
       const dateParam = formatISO(selectedDate)
-      return PharmacyService.getNearby(mapCenter[0], mapCenter[1], radius * 1000, dateParam)
+      return PharmacyService.getNearby(center[0], center[1], radius * 1000, dateParam)
     },
     retry: false,
   })
@@ -100,14 +104,14 @@ export function PharmacyFinder() {
   // Group pharmacies by location and calculate distance client-side for accuracy
   const groupedPharmacies = useMemo(() => {
     const grouped = groupPharmacies(rawPharmacies);
+    const center = userLocation || mapCenter
 
-    // Recalculate distance based on current mapCenter (user location)
+    // Recalculate distance based on actual user location
     return grouped.map(p => ({
       ...p,
-      distance: calculateDistance(mapCenter[0], mapCenter[1], p.lat, p.lng)
+      distance: calculateDistance(center[0], center[1], p.lat, p.lng)
     }));
-  }, [rawPharmacies, mapCenter]);
-
+  }, [rawPharmacies, userLocation, mapCenter]);
   // Filter and sort pharmacies (local filtering for on-duty and radius)
   const filteredPharmacies = useMemo(() => {
     let result = filterPharmacies(groupedPharmacies, radius);
