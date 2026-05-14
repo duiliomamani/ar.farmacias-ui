@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/auth-context'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-export default function AuthSuccessPage() {
+function AuthContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
@@ -35,5 +35,20 @@ export default function AuthSuccessPage() {
         <p className="text-sm font-medium text-muted-foreground italic">Verificando credenciales...</p>
       </div>
     </div>
+  )
+}
+
+export default function AuthSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground italic">Cargando entorno seguro...</p>
+        </div>
+      </div>
+    }>
+      <AuthContent />
+    </Suspense>
   )
 }
