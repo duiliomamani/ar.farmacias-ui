@@ -2,6 +2,61 @@
 
 **FarmaYa AR** es una plataforma moderna y colaborativa para localizar farmacias de turno en Argentina en tiempo real. La aplicación permite a los usuarios encontrar farmacias cercanas a través de un mapa interactivo o una lista detallada, verificar su estado y sugerir nuevas fuentes de información para expandir la cobertura nacional.
 
+## 🏗️ Arquitectura del Proyecto
+
+```mermaid
+graph TD
+    %% Styling definitions
+    classDef frontend fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff,rx:10px,ry:10px,font-weight:bold;
+    classDef backend fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff,rx:10px,ry:10px,font-weight:bold;
+    classDef database fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff,rx:10px,ry:10px,font-weight:bold;
+    classDef ai fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff,rx:10px,ry:10px,font-weight:bold;
+    classDef user fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff,rx:10px,ry:10px,font-weight:bold;
+
+    %% Nodes
+    USER(("👥 Usuarios\n(Vecinos / Farmacéuticos)")):::user
+    
+    subgraph FRONTEND ["💻 UI / Aplicación (Next.js)"]
+        direction TB
+        MAP["🗺️ Mapa Interactivo\n(Leaflet)"]:::frontend
+        LIST["📋 Lista de Farmacias"]:::frontend
+        COMMUNITY["🤝 Módulo de Comunidad\n(Reportes & Sugerencias)"]:::frontend
+    end
+
+    subgraph BACKEND ["⚙️ API / Core (NestJS)"]
+        direction TB
+        AUTH["🛡️ Autenticación\n(Google OAuth)"]:::backend
+        PHARMACY_SRV["🏥 Gestión de Farmacias"]:::backend
+        RATE_LIMIT["⏱️ Control de Abuso\n(Throttler)"]:::backend
+    end
+
+    subgraph AI_SERVICES ["🤖 Procesamiento Inteligente"]
+        direction TB
+        OCR["📄 Extracción OCR\n(Cronogramas PDF)"]:::ai
+        OPENAI["🧠 OpenAI LLM\n(Estructuración de Datos)"]:::ai
+    end
+
+    DB[("🗄️ Base de Datos\n(MongoDB)")]:::database
+
+    %% Connections
+    USER -->|Busca de Turno| MAP
+    USER -->|Busca por Lista| LIST
+    USER -->|Envía Reporte/Sugerencia| COMMUNITY
+
+    MAP <-->|"Consulta APIs"| PHARMACY_SRV
+    LIST <-->|"Consulta APIs"| PHARMACY_SRV
+    COMMUNITY -->|"Validación"| RATE_LIMIT
+    RATE_LIMIT -->|"Aplica"| PHARMACY_SRV
+
+    USER <-->|"Login"| AUTH
+    AUTH <-->|"Validación"| DB
+
+    PHARMACY_SRV <-->|"Guarda/Lee"| DB
+
+    OCR -->|"Texto Crudo"| OPENAI
+    OPENAI -->|"JSON Normalizado"| DB
+```
+
 ## 🚀 Características Principales
 
 - **📍 Localizador Inteligente:** Encuentra farmacias de turno cercanas a tu ubicación actual utilizando geolocalización.
