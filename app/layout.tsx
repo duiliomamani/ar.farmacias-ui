@@ -52,6 +52,8 @@ export const viewport: Viewport = {
   ],
 }
 
+import { Toaster } from "@/components/ui/toaster"
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -68,6 +70,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <Toaster />
           </ThemeProvider>
         </Providers>
         {process.env.NODE_ENV === 'production' && <Analytics />}

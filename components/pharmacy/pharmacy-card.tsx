@@ -59,12 +59,20 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
         title: "¡Gracias por tu aporte!", 
         description: "El estado ha sido actualizado para ayudar a la comunidad." 
       })
-    } catch (e) {
-      toast({ 
-        title: "Error", 
-        description: "No se pudo enviar el reporte. Inténtalo más tarde.", 
-        variant: "destructive" 
-      })
+    } catch (e: any) {
+      if (e?.statusCode === 429 || e?.message?.includes('429')) {
+        toast({ 
+          title: "Demasiados intentos", 
+          description: "Por favor, espera unos minutos antes de enviar otro reporte.", 
+          variant: "destructive" 
+        })
+      } else {
+        toast({ 
+          title: "Error", 
+          description: "No se pudo enviar el reporte. Inténtalo más tarde.", 
+          variant: "destructive" 
+        })
+      }
     } finally {
       setIsReporting(false)
     }
