@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Camera, CheckCircle2, Loader2, MapPin, X } from "lucide-react"
+import { Camera, CheckCircle2, Loader2, MapPin, X, Flag } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -129,9 +129,10 @@ export function ReportPharmacyModal({ pharmacy, trigger }: ReportPharmacyModalPr
         description: "Tu aporte ayuda a la comunidad. El estado se actualizará pronto.",
       })
       setOpen(false)
-    } catch (error) {
-      toast.error("No se pudo enviar el reporte", {
-        description: "Inténtalo de nuevo más tarde."
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "No se pudo enviar el reporte";
+      toast.error("Error al reportar", {
+        description: errorMessage
       })
     } finally {
       setIsSubmitting(false)
@@ -141,66 +142,66 @@ export function ReportPharmacyModal({ pharmacy, trigger }: ReportPharmacyModalPr
   }
 
   const ModalContent = (
-    <div className="grid gap-6 py-4">
-      <div className="grid gap-2 px-4 md:px-0 text-center">
-        <h4 className="font-bold text-lg">{pharmacy.name}</h4>
-        <p className="text-sm text-muted-foreground">{pharmacy.address}</p>
+    <div className="grid gap-4 py-2">
+      <div className="grid gap-0.5 px-4 md:px-0 text-center">
+        <h4 className="font-black text-base uppercase tracking-tight">{pharmacy.name}</h4>
+        <p className="text-[11px] text-muted-foreground font-medium">{pharmacy.address}</p>
       </div>
 
-      <div className="grid gap-3 px-4 md:px-0">
-        <Label>Estado de Turno</Label>
+      <div className="grid gap-2 px-4 md:px-0">
+        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Estado Actual</Label>
         <div className="flex gap-2">
           <Button
             type="button"
             variant={isOnDuty ? "default" : "outline"}
-            className={cn("flex-1 h-12 gap-2", isOnDuty && "bg-green-600 hover:bg-green-700")}
+            className={cn("flex-1 h-10 gap-2 text-xs font-bold", isOnDuty && "bg-green-600 hover:bg-green-700 shadow-sm")}
             onClick={() => setIsOnDuty(true)}
           >
-            <CheckCircle2 className="h-5 w-5" />
+            <CheckCircle2 className="h-4 w-4" />
             Está de Turno
           </Button>
           <Button
             type="button"
             variant={!isOnDuty ? "destructive" : "outline"}
-            className="flex-1 h-12 gap-2"
+            className="flex-1 h-10 gap-2 text-xs font-bold shadow-sm"
             onClick={() => setIsOnDuty(false)}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
             Cerrada
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-3 px-4 md:px-0">
-        <Label>Validación de Ubicación</Label>
+      <div className="grid gap-2 px-4 md:px-0">
+        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Validación de Ubicación</Label>
         <div 
           className={cn(
-            "flex items-center justify-between p-4 rounded-lg border bg-muted/30 transition-colors",
-            locationStatus === "success" && "border-green-500/50 bg-green-50/10",
-            locationStatus === "error" && "border-red-500/50 bg-red-50/10"
+            "flex items-center justify-between p-3 rounded-xl border bg-muted/30 transition-all shadow-inner",
+            locationStatus === "success" && "border-green-500/30 bg-green-50/20",
+            locationStatus === "error" && "border-red-500/30 bg-red-50/20"
           )}
         >
           <div className="flex items-center gap-3">
             <div className={cn(
-              "p-2 rounded-full",
+              "p-2 rounded-full shadow-sm",
               locationStatus === "success" ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"
             )}>
               {locationStatus === "loading" ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : locationStatus === "success" ? (
-                <CheckCircle2 className="h-5 w-5" />
+                <CheckCircle2 className="h-4 w-4" />
               ) : (
-                <MapPin className="h-5 w-5" />
+                <MapPin className="h-4 w-4" />
               )}
             </div>
             <div>
-              <p className="text-sm font-medium leading-none">
-                {locationStatus === "success" ? "Ubicación verificada" : "Ubicación requerida"}
+              <p className="text-[11px] font-bold leading-none">
+                {locationStatus === "success" ? "GPS Verificado" : "GPS Requerido"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1 font-medium">
                 {locationStatus === "success" 
                   ? `${location?.lat.toFixed(4)}, ${location?.lng.toFixed(4)}`
-                  : "Debes estar cerca de la farmacia (100m)"}
+                  : "Máximo 100 metros"}
               </p>
             </div>
           </div>
@@ -208,14 +209,15 @@ export function ReportPharmacyModal({ pharmacy, trigger }: ReportPharmacyModalPr
             type="button" 
             variant="outline" 
             size="sm"
+            className="h-8 text-[10px] font-black uppercase px-3 border-2"
             onClick={handleGetLocation}
             disabled={locationStatus === "loading" || locationStatus === "success"}
           >
-            {locationStatus === "success" ? "Actualizar" : "Obtener GPS"}
+            {locationStatus === "success" ? "Listo" : "Obtener"}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground text-center italic">
-          El sistema valida que estés a menos de 100 metros para aceptar el reporte.
+        <p className="text-[9px] text-muted-foreground/60 text-center font-bold uppercase tracking-tighter italic">
+          Validación obligatoria por proximidad física
         </p>
       </div>
     </div>
@@ -224,17 +226,17 @@ export function ReportPharmacyModal({ pharmacy, trigger }: ReportPharmacyModalPr
   const Footer = (
     <Button 
       type="button" 
-      className="w-full sm:w-auto font-bold" 
+      className="w-full sm:w-full font-black text-xs uppercase tracking-widest h-11 shadow-lg" 
       disabled={!location || isSubmitting}
       onClick={handleSubmit}
     >
       {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Enviando...
+          ENVIANDO...
         </>
       ) : (
-        "Confirmar Estado"
+        "Confirmar Reporte"
       )}
     </Button>
   )
@@ -260,25 +262,27 @@ export function ReportPharmacyModal({ pharmacy, trigger }: ReportPharmacyModalPr
         <DrawerTrigger asChild>
           {trigger || (
             <Button variant="outline" size="sm" className="gap-2 rounded-full border-primary/20 text-primary hover:bg-primary/5">
-              <Camera className="h-4 w-4" />
+              <Flag className="h-4 w-4" />
               Reportar Estado
             </Button>
           )}
         </DrawerTrigger>
         <DrawerContent>
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Reportar Estado</DrawerTitle>
-            <DrawerDescription>
-              Informa si esta farmacia está atendiendo de turno.
+          <DrawerHeader className="text-left py-4">
+            <DrawerTitle className="text-xl font-black uppercase tracking-tighter">Reportar Estado</DrawerTitle>
+            <DrawerDescription className="text-xs font-medium">
+              Ayuda a la comunidad informando si esta farmacia está abierta.
             </DrawerDescription>
           </DrawerHeader>
-          {ModalContent}
-          <DrawerFooter className="pt-2">
-            {Footer}
+          <div className="px-4 pb-4">
+            {ModalContent}
+            <div className="mt-4">
+              {Footer}
+            </div>
             <DrawerClose asChild>
-              <Button variant="outline">Cancelar</Button>
+              <Button variant="ghost" className="w-full mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cancelar</Button>
             </DrawerClose>
-          </DrawerFooter>
+          </div>
         </DrawerContent>
       </Drawer>
     )
@@ -304,24 +308,26 @@ export function ReportPharmacyModal({ pharmacy, trigger }: ReportPharmacyModalPr
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" className="gap-2 border-primary/20 text-primary hover:bg-primary/5">
-            <Camera className="h-4 w-4" />
+            <Flag className="h-4 w-4" />
             Reportar Estado
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Reportar Estado</DialogTitle>
-          <DialogDescription>
-            Ayuda a la comunidad informando si esta farmacia está abierta.
-          </DialogDescription>
-        </DialogHeader>
-        {ModalContent}
-        <DialogFooter>
-          {Footer}
-        </DialogFooter>
+      <DialogContent className="sm:max-w-[380px] p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+        <div className="bg-primary h-1.5 w-full" />
+        <div className="p-6">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-black uppercase tracking-tighter">Reportar Estado</DialogTitle>
+            <DialogDescription className="text-xs font-medium">
+              Tu reporte ayuda a mantener el mapa nacional actualizado.
+            </DialogDescription>
+          </DialogHeader>
+          {ModalContent}
+          <div className="mt-6">
+            {Footer}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )
 }
-
