@@ -176,13 +176,13 @@ function PharmacyMapContent({
                       )}
                     >
                       {pharmacy.isOnDuty 
-                        ? (pharmacy.closingTime 
+                        ? (pharmacy.openingHours || (pharmacy.closingTime 
                             ? `Abierta hasta las ${new Date(pharmacy.closingTime).toLocaleTimeString('es-AR', { 
                                 timeZone: 'America/Argentina/Buenos_Aires', 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
                               })}hs` 
-                            : 'Abierta ahora')
+                            : 'Abierta ahora'))
                         : 'Cerrada ahora'}
                     </Badge>
                   </div>

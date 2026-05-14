@@ -96,9 +96,11 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
                     : 'bg-muted text-muted-foreground'
                 )}
               >
-                {pharmacy.isOnDuty && pharmacy.closingTime
-                    ? `Abierto hasta las ${new Date(pharmacy.closingTime).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })}hs`
-                    : 'Cerrado temporalmente'}
+                {pharmacy.isOnDuty
+                  ? (pharmacy.openingHours || (pharmacy.closingTime
+                      ? `Abierto hasta las ${new Date(pharmacy.closingTime).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })}hs`
+                      : 'Abierto ahora'))
+                  : 'Cerrado temporalmente'}
               </Badge>
               {pharmacy.lastConfirmed && (
                 <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 italic">

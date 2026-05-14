@@ -31,8 +31,12 @@ function mapBackendPharmacy(item: any): Pharmacy {
     type: item.type || 'pharmacy',
     verificationStatus: item.verificationStatus || 'verified',
     activityLevel: item.activityLevel || 50,
-    closingTime: item.dutyUntil, // Pass the full date string for grouping
-    distance: item.distance ? item.distance / 1000 : 0, // Assume backend returns distance in meters if any
+    closingTime: item.dutyUntil || item.closingTime, // Maintain compatibility
+    openingHours: item.openingHours,
+    dutyUntil: item.dutyUntil,
+    dutyFrom: item.dutyFrom,
+    isPermanentlyOnDuty: item.isPermanentlyOnDuty,
+    distance: item.distance ? item.distance / 1000 : 0, 
     veracityScore: item.veracityScore || 100,
     city: item.city,
     shifts: item.shifts || [],

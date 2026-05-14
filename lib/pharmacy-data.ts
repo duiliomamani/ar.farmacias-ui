@@ -13,16 +13,20 @@ export interface Pharmacy {
   lat: number;
   lng: number;
   phone: string;
-  isOnDuty: boolean; // Represents if it's on duty for the *selected date*
+  isOnDuty: boolean; 
   type: HealthCenterType;
   verificationStatus: VerificationStatus;
-  activityLevel: number; // 0-100 (Heatmap)
+  activityLevel: number; 
   lastConfirmed?: string;
-  closingTime?: string; // For the *current* or *selected* shift
+  closingTime?: string; 
+  openingHours?: string;
+  dutyUntil?: string;
+  dutyFrom?: string;
+  isPermanentlyOnDuty?: boolean;
   distance?: number;
-  veracityScore?: number; // Percentage 0-100
+  veracityScore?: number; 
   city?: string;
-  shifts: Shift[]; // Array of all upcoming shifts
+  shifts: Shift[]; 
 }
 
 // ... (mockPharmacies remains the same for now, but will need updating to fit the new structure if used)
@@ -85,7 +89,8 @@ export const mockPharmacies: Pharmacy[] = [
     type: 'pharmacy',
     verificationStatus: 'verified',
     activityLevel: 85,
-    closingTime: '08:00 AM',
+    closingTime: '2026-05-13T08:00:00.000Z',
+    openingHours: 'Atención Permanente (24hs)',
     distance: 0.3,
     veracityScore: 98,
     lastConfirmed: 'Hace 5 min',
