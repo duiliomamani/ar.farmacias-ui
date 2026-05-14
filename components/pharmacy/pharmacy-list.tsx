@@ -28,23 +28,19 @@ export function PharmacyList({
   return (
     <div className="flex flex-col h-full bg-background/50">
       {/* Header */}
-      <div className="px-4 py-4 border-b bg-card/80 backdrop-blur-xl sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading font-black text-foreground flex items-center gap-2 tracking-tighter uppercase text-sm">
-            <Pill className="h-4 w-4 text-primary" strokeWidth={3} />
-            Centros Cercanos
-          </h2>
+      <div className="px-4 py-3 border-b bg-card/80 backdrop-blur-xl sticky top-0 z-10 shadow-sm flex items-center justify-between">
+        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5">
+          <Search className="h-3 w-3 text-primary" strokeWidth={3} />
+          {pharmacies.length} resultados encontrados
+        </p>
+        {!isLoading && pharmacies.length > 0 && (
           <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-              {onDutyCount} ACTIVOS
+            <div className="h-1.5 w-1.5 bg-primary rounded-full animate-pulse" />
+            <span className="text-[9px] font-black text-primary uppercase tracking-widest">
+              Actualizado
             </span>
           </div>
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-widest flex items-center gap-1">
-          <Search className="h-3 w-3" />
-          Se encontraron {pharmacies.length} resultados
-        </p>
+        )}
       </div>
 
       {/* List */}
