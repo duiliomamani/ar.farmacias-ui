@@ -77,8 +77,23 @@ function PharmacyMapContent({
     if (latestReport && !latestReport.isOnDuty) {
       // Reported closed recently
       badgeHtml = `
-        <div style="position: absolute; top: -2px; right: -2px; background: #ea580c; border: 2px solid white; border-radius: 50%; width: 16px; height: 16px; display: flex; items-center; justify-center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-          <span style="color: white; font-size: 10px; font-weight: bold; transform: translateY(-1px);">!</span>
+        <div style="
+          position: absolute; 
+          top: -4px; 
+          right: -4px; 
+          background: #f97316; 
+          border: 1.5px solid white; 
+          border-radius: 50%; 
+          width: 18px; 
+          height: 18px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          z-index: 10; 
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          animation: pulse-danger 2s infinite;
+        ">
+          <span style="color: white; font-size: 11px; font-weight: 900; line-height: 1;">!</span>
         </div>
       `;
       extraClass += ' reported-closed-glow';
@@ -89,8 +104,22 @@ function PharmacyMapContent({
       if (recentVerifiedReport) {
         // Confirmed open recently
         badgeHtml = `
-          <div style="position: absolute; top: -2px; right: -2px; background: #16a34a; border: 2px solid white; border-radius: 50%; width: 16px; height: 16px; display: flex; items-center; justify-center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+          <div style="
+            position: absolute; 
+            top: -4px; 
+            right: -4px; 
+            background: #22c55e; 
+            border: 1.5px solid white; 
+            border-radius: 50%; 
+            width: 18px; 
+            height: 18px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 10; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          ">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </div>

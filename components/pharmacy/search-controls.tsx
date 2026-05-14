@@ -25,7 +25,6 @@ interface SearchControlsProps {
   selectedDate: Date
   onDateChange: (date: Date) => void
   onlyOnDuty: boolean
-  onOnlyOnDutyChange: (value: boolean) => void
   className?: string
 }
 
@@ -37,7 +36,6 @@ export function SearchControls({
   selectedDate,
   onDateChange,
   onlyOnDuty,
-  onOnlyOnDutyChange,
   className,
 }: Omit<SearchControlsProps, 'searchQuery' | 'onSearchChange'>) {
   return (
@@ -69,18 +67,6 @@ export function SearchControls({
             />
           </PopoverContent>
         </Popover>
-
-        <div className="flex items-center gap-2 px-3 bg-card border border-border rounded-md shadow-sm">
-          <Clock className={cn("h-4 w-4", onlyOnDuty ? "text-green-500" : "text-muted-foreground")} />
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase text-muted-foreground leading-none">Turno</span>
-            <Switch 
-              checked={onlyOnDuty}
-              onCheckedChange={onOnlyOnDutyChange}
-              className="scale-75 origin-left"
-            />
-          </div>
-        </div>
 
         <Button
           variant="outline"
