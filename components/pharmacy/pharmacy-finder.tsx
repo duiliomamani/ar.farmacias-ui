@@ -50,7 +50,7 @@ export function PharmacyFinder() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-34.6037, -58.3816])
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
-  
+
   // New Filter States
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [onlyOnDuty, setOnlyOnDuty] = useState(true)
@@ -67,7 +67,7 @@ export function PharmacyFinder() {
 
   const handleUseMyLocation = useCallback(() => {
     setIsLocating(true)
-    
+
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -117,11 +117,11 @@ export function PharmacyFinder() {
   // Filter and sort pharmacies (local filtering for on-duty and radius)
   const filteredPharmacies = useMemo(() => {
     let result = filterPharmacies(groupedPharmacies, radius);
-    
+
     if (onlyOnDuty) {
       result = result.filter(p => p.isOnDuty);
     }
-    
+
     return sortPharmacies(result);
   }, [groupedPharmacies, radius, onlyOnDuty]);
 
@@ -151,9 +151,9 @@ export function PharmacyFinder() {
               <span className="font-heading font-black text-foreground tracking-tighter text-lg">FarmaYa AR</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-primary"
                 onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
               >
@@ -174,9 +174,9 @@ export function PharmacyFinder() {
                 onSearchChange={setSearchQuery}
                 radius={radius}
                 onRadiusChange={setRadius}
-                            onUseMyLocation={handleUseMyLocation}
-                            isLocating={isLocating}
-                            selectedDate={selectedDate}                onDateChange={setSelectedDate}
+                onUseMyLocation={handleUseMyLocation}
+                isLocating={isLocating}
+                selectedDate={selectedDate} onDateChange={setSelectedDate}
                 onlyOnDuty={onlyOnDuty}
                 onOnlyOnDutyChange={setOnlyOnDuty}
                 className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-border/50"
@@ -216,9 +216,9 @@ export function PharmacyFinder() {
                 onSearchChange={setSearchQuery}
                 radius={radius}
                 onRadiusChange={setRadius}
-                            onUseMyLocation={handleUseMyLocation}
-                            isLocating={isLocating}
-                            selectedDate={selectedDate}                onDateChange={setSelectedDate}
+                onUseMyLocation={handleUseMyLocation}
+                isLocating={isLocating}
+                selectedDate={selectedDate} onDateChange={setSelectedDate}
                 onlyOnDuty={onlyOnDuty}
                 onOnlyOnDutyChange={setOnlyOnDuty}
               />
@@ -241,91 +241,97 @@ export function PharmacyFinder() {
 
   // Desktop Layout
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-background relative justify-center">
-      {/* Search & List Panel */}
-      <div className={cn(
-        "flex flex-col border-r bg-card shadow-2xl z-10 transition-all duration-300",
-        viewMode === 'map' ? "w-[380px]" : "w-full max-w-5xl"
-      )}>
-        {/* Header */}
-        <div className="p-6 border-b bg-gradient-to-br from-primary/10 via-background to-background">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary text-primary-foreground p-2.5 rounded-xl shadow-lg ring-4 ring-primary/10">
-                <HeartPulse className="h-6 w-6" strokeWidth={2.5} />
-              </div>
-              <div>
-                <h1 className="text-xl font-heading font-black text-foreground tracking-tighter">FarmaYa AR</h1>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Centro de Emergencias Nacional</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="bg-muted/50 rounded-lg p-1 mr-2 flex items-center">
-                <Button 
-                  variant={viewMode === 'map' ? 'default' : 'ghost'} 
-                  size="sm" 
-                  className={cn("h-8 px-3 gap-2", viewMode === 'map' && "shadow-sm")}
-                  onClick={() => setViewMode('map')}
-                >
-                  <MapIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline text-xs font-bold">Mapa</span>
-                </Button>
-                <Button 
-                  variant={viewMode === 'list' ? 'default' : 'ghost'} 
-                  size="sm" 
-                  className={cn("h-8 px-3 gap-2", viewMode === 'list' && "shadow-sm")}
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-4 w-4" />
-                  <span className="hidden sm:inline text-xs font-bold">Lista</span>
-                </Button>
-              </div>
-              <AuthButton />
-              <ThemeToggle />
-            </div>
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background">
+      {/* Top Navbar */}
+      <header className="h-16 border-b bg-card shadow-sm z-50 flex items-center justify-between px-6 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary text-primary-foreground p-1.5 rounded-lg shadow-md ring-4 ring-primary/5">
+            <HeartPulse className="h-5 w-5" strokeWidth={2.5} />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-heading font-black text-foreground tracking-tighter leading-tight">FarmaYa AR</h1>
           </div>
         </div>
 
-        {/* Search Controls */}
-        <div className="p-4 border-b bg-muted/20">
-          <SearchControls
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            radius={radius}
-            onRadiusChange={setRadius}
-            onUseMyLocation={handleUseMyLocation}
-            isLocating={isLocating}
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            onlyOnDuty={onlyOnDuty}
-            onOnlyOnDutyChange={setOnlyOnDuty}
-          />
+        <div className="flex items-center gap-4">
+          <div className="bg-muted/50 rounded-lg p-1 flex items-center shadow-inner border">
+            <Button
+              variant={viewMode === 'map' ? 'default' : 'ghost'}
+              size="sm"
+              className={cn("h-8 px-4 gap-2 text-xs font-bold transition-all", viewMode === 'map' && "shadow-sm")}
+              onClick={() => setViewMode('map')}
+            >
+              <MapIcon className="h-3.5 w-3.5" />
+              Mapa
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className={cn("h-8 px-4 gap-2 text-xs font-bold transition-all", viewMode === 'list' && "shadow-sm")}
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-3.5 w-3.5" />
+              Lista
+            </Button>
+          </div>
+
+          <div className="h-8 w-px bg-border mx-2" />
+
+          <div className="flex items-center gap-2">
+            <AuthButton />
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex overflow-hidden relative">
+        {/* Search & List Panel (Desktop) */}
+        <div className={cn(
+          "flex flex-col border-r bg-card/50 backdrop-blur-sm z-40 transition-all duration-500 ease-in-out shadow-xl",
+          viewMode === 'map' ? "w-[380px]" : "w-full"
+        )}>
+          {/* Search Controls Container */}
+          <div className="p-4 border-b bg-muted/20">
+            <SearchControls
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              radius={radius}
+              onRadiusChange={setRadius}
+              onUseMyLocation={handleUseMyLocation}
+              isLocating={isLocating}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              onlyOnDuty={onlyOnDuty}
+              onOnlyOnDutyChange={setOnlyOnDuty}
+            />
+          </div>
+
+          {/* Pharmacy List Container */}
+          <div className="flex-1 overflow-hidden">
+            <PharmacyList
+              pharmacies={filteredPharmacies}
+              selectedPharmacy={selectedPharmacy}
+              onSelectPharmacy={handleSelectPharmacy}
+              onReportOpen={handleReportOpen}
+              isLoading={isLoading}
+              viewMode={viewMode}
+            />
+          </div>
         </div>
 
-        {/* Pharmacy List */}
-        <div className="flex-1 overflow-hidden">
-          <PharmacyList
-            pharmacies={filteredPharmacies}
-            selectedPharmacy={selectedPharmacy}
-            onSelectPharmacy={handleSelectPharmacy}
-            onReportOpen={handleReportOpen}
-            isLoading={isLoading}
-            viewMode={viewMode}
-          />
-        </div>
-      </div>
-
-      {/* Right Panel - Map */}
-      {viewMode === 'map' && (
-        <div className="flex-1 relative">
-          <PharmacyMap
-            pharmacies={filteredPharmacies}
-            center={mapCenter}
-            selectedPharmacy={selectedPharmacy}
-            onSelectPharmacy={handleSelectPharmacy}
-          />
-        </div>
-      )}
+        {/* Map Panel (Desktop) */}
+        {viewMode === 'map' && (
+          <div className="flex-1 relative z-0">
+            <PharmacyMap
+              pharmacies={filteredPharmacies}
+              center={mapCenter}
+              selectedPharmacy={selectedPharmacy}
+              onSelectPharmacy={handleSelectPharmacy}
+            />
+          </div>
+        )}
+      </main>
 
       {/* Floating Action Button */}
       <ContributeDataModal selectedPharmacy={selectedPharmacy} />

@@ -1,7 +1,7 @@
 'use client'
 
 import { ReportPharmacyModal } from './report-pharmacy-modal'
-import { Navigation, Phone, MapPin, Check, Share2, Flame, Info, Camera, CalendarDays } from 'lucide-react'
+import { Navigation, MapPin, Check, Share2, Flame, Info, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,10 +22,6 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
   const handleNavigate = () => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.lat},${pharmacy.lng}`
     window.open(url, '_blank')
-  }
-
-  const handleCall = () => {
-    window.location.href = `tel:${pharmacy.phone}`
   }
 
   const handleShare = () => {
@@ -55,7 +51,7 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
               <h3 className="font-heading font-black text-foreground leading-tight text-sm tracking-tight uppercase group-hover:text-primary transition-colors line-clamp-1">
                 {pharmacy.name}
               </h3>
-              
+
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge
                   className={cn(
@@ -67,19 +63,19 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
                 >
                   {pharmacy.isOnDuty
                     ? (pharmacy.isPermanentlyOnDuty || pharmacy.openingHours?.toLowerCase().includes('24hs')
-                        ? '24hs'
-                        : (() => {
-                            if (!pharmacy.dutyUntil) return 'Abierta';
-                            const until = new Date(pharmacy.dutyUntil);
-                            const now = new Date();
-                            const isTomorrow = until.getDate() !== now.getDate();
-                            const timeStr = until.toLocaleTimeString('es-AR', { 
-                              timeZone: 'America/Argentina/Buenos_Aires', 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            }) + 'hs';
-                            return isTomorrow ? `Turno: mañana ${timeStr}` : `Turno: ${timeStr}`;
-                          })())
+                      ? '24hs'
+                      : (() => {
+                        if (!pharmacy.dutyUntil) return 'Abierta';
+                        const until = new Date(pharmacy.dutyUntil);
+                        const now = new Date();
+                        const isTomorrow = until.getDate() !== now.getDate();
+                        const timeStr = until.toLocaleTimeString('es-AR', {
+                          timeZone: 'America/Argentina/Buenos_Aires',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) + 'hs';
+                        return isTomorrow ? `Turno: mañana ${timeStr}` : `Turno: ${timeStr}`;
+                      })())
                     : 'Cerrada'}
                 </Badge>
                 {pharmacy.openingHours && !pharmacy.openingHours.toLowerCase().includes('24hs') && (
@@ -116,9 +112,9 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
               <Navigation className="mr-1.5 h-3 w-3" strokeWidth={3} />
               Navegar
             </Button>
-            
-            <ReportPharmacyModal 
-              pharmacy={pharmacy} 
+
+            <ReportPharmacyModal
+              pharmacy={pharmacy}
               trigger={
                 <Button
                   variant="outline"
@@ -126,22 +122,11 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
                   className="w-8 h-8 p-0 border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Camera className="h-3.5 w-3.5" />
+                  <Flag className="h-3.5 w-3.5" />
                 </Button>
               }
             />
 
-            <Button
-              variant="outline"
-              className="w-8 h-8 p-0 border-primary/20 hover:border-primary/50 hover:bg-primary/5 text-primary"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleCall()
-              }}
-            >
-              <Phone className="h-3.5 w-3.5" strokeWidth={2.5} />
-            </Button>
-            
             <Button
               variant="outline"
               className="w-8 h-8 p-0 border-green-500/20 hover:border-green-500/50 hover:bg-green-500/5 text-green-600"
@@ -156,7 +141,5 @@ export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardPro
         </div>
       </CardContent>
     </Card>
-  )
-}
   )
 }

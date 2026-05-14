@@ -51,9 +51,6 @@ export function PharmacyList({
               <Pill className="h-10 w-10 text-primary" strokeWidth={2} />
             </div>
             <p className="text-foreground font-black uppercase tracking-tighter text-lg animate-pulse">Buscando Farmacias...</p>
-            <p className="text-xs text-muted-foreground mt-2 font-medium leading-relaxed italic">
-              Conectando con el Centro de Emergencias Nacional
-            </p>
           </div>
         ) : pharmacies.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
@@ -67,8 +64,8 @@ export function PharmacyList({
           </div>
         ) : (
           <div className={cn(
-            viewMode === 'list' 
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" 
+            viewMode === 'list'
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
               : "flex flex-col space-y-4"
           )}>
             {pharmacies.map((pharmacy) => (
