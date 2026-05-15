@@ -1,19 +1,12 @@
 'use client'
-import { Crosshair, Search, MapPin, Pill, CalendarIcon, Clock } from 'lucide-react'
+import { Crosshair, Search, MapPin, Pill, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Calendar } from '@/components/ui/calendar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { SuggestCityModal } from './suggest-city-modal'
 
 interface SearchControlsProps {
   searchQuery: string
@@ -22,9 +15,6 @@ interface SearchControlsProps {
   onRadiusChange: (value: number) => void
   onUseMyLocation: () => void
   isLocating: boolean
-  selectedDate: Date
-  onDateChange: (date: Date) => void
-  onlyOnDuty: boolean
   className?: string
 }
 
@@ -33,51 +23,24 @@ export function SearchControls({
   onRadiusChange,
   onUseMyLocation,
   isLocating,
-  selectedDate,
-  onDateChange,
-  onlyOnDuty,
   className,
 }: Omit<SearchControlsProps, 'searchQuery' | 'onSearchChange'>) {
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Date & On-Duty Toggle Row */}
+      {/* Location Actions Row */}
       <div className="flex gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "flex-1 justify-start text-left font-normal h-10 bg-card border-border",
-                !selectedDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-              <span className="text-xs font-bold">
-                {selectedDate ? format(selectedDate, "PPP", { locale: es }) : "Seleccionar fecha"}
-              </span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && onDateChange(date)}
-              initialFocus
-              locale={es}
-            />
-          </PopoverContent>
-        </Popover>
-
         <Button
           variant="outline"
-          size="icon"
+          className="flex-1 justify-start text-left font-normal h-10 bg-card border-border"
           onClick={onUseMyLocation}
           disabled={isLocating}
-          className="h-10 w-10 shrink-0 bg-card border-border shadow-sm text-primary hover:bg-primary/5"
-          title="Mi ubicación"
         >
-          <Crosshair className={cn("h-5 w-5", isLocating && "animate-spin")} strokeWidth={2.5} />
+          <Crosshair className={cn("mr-2 h-4 w-4 text-primary", isLocating && "animate-spin")} />
+          <span className="text-xs font-bold">
+            {isLocating ? "Obteniendo ubicación..." : "Usar mi ubicación actual"}
+          </span>
         </Button>
+        <SuggestCityModal variant="compact" />
       </div>
 
       {/* Radius Slider */}

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 interface PharmacyListProps {
   pharmacies: Pharmacy[]
   selectedPharmacy?: Pharmacy | null
+  userLocation?: [number, number] | null
   onSelectPharmacy?: (pharmacy: Pharmacy) => void
   onReportOpen?: (pharmacy: Pharmacy) => void
   isLoading?: boolean
@@ -18,6 +19,7 @@ interface PharmacyListProps {
 export function PharmacyList({
   pharmacies,
   selectedPharmacy,
+  userLocation,
   onSelectPharmacy,
   onReportOpen,
   isLoading,
@@ -73,6 +75,7 @@ export function PharmacyList({
                 key={pharmacy.id}
                 pharmacy={pharmacy}
                 isSelected={selectedPharmacy?.id === pharmacy.id}
+                userLocation={userLocation}
                 onSelect={onSelectPharmacy}
                 onReportOpen={onReportOpen}
               />

@@ -19,8 +19,7 @@ import { PharmacyService } from '@/lib/api'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Pill, HeartPulse, Map as MapIcon, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn, getDeviceId, calculateDistance } from '@/lib/utils'
-import { format, formatISO } from 'date-fns'
+import { cn, getDeviceId, calculateDistance, getEffectiveDutyDate } from '@/lib/utils'
 
 // Dynamically import the map to avoid SSR issues with Leaflet
 const PharmacyMap = dynamic(
@@ -51,7 +50,6 @@ export function PharmacyFinder() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
 
   // New Filter States
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [onlyOnDuty, setOnlyOnDuty] = useState(true)
 
   // Initialize device ID
@@ -92,11 +90,11 @@ export function PharmacyFinder() {
 
   // Data Fetching
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
-    queryKey: ['pharmacies', userLocation || mapCenter, radius, selectedDate],
+    queryKey: ['pharmacies', userLocation || mapCenter, radius, getEffectiveDutyDate().toDateString()],
     queryFn: async () => {
       const center = userLocation || mapCenter
-      const dateParam = formatISO(selectedDate)
-      return PharmacyService.getNearby(center[0], center[1], radius * 1000, dateParam)
+      const effectiveDate = getEffectiveDutyDate().toISOString()
+      return PharmacyService.getNearby(center[0], center[1], radius * 1000, effectiveDate)
     },
     retry: false,
   })
@@ -173,10 +171,6 @@ export function PharmacyFinder() {
                 onRadiusChange={setRadius}
                 onUseMyLocation={handleUseMyLocation}
                 isLocating={isLocating}
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                onlyOnDuty={onlyOnDuty}
-                onOnlyOnDutyChange={setOnlyOnDuty}
                 className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-border/50"
               />
             </div>
@@ -197,6 +191,7 @@ export function PharmacyFinder() {
               <PharmacyList
                 pharmacies={filteredPharmacies}
                 selectedPharmacy={selectedPharmacy}
+                userLocation={userLocation}
                 onSelectPharmacy={handleSelectPharmacy}
                 onReportOpen={handleReportOpen}
                 isLoading={isLoading}
@@ -215,16 +210,13 @@ export function PharmacyFinder() {
                 onRadiusChange={setRadius}
                 onUseMyLocation={handleUseMyLocation}
                 isLocating={isLocating}
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                onlyOnDuty={onlyOnDuty}
-                onOnlyOnDutyChange={setOnlyOnDuty}
               />
             </div>
             <div className="flex-1 overflow-hidden">
               <PharmacyList
                 pharmacies={filteredPharmacies}
                 selectedPharmacy={selectedPharmacy}
+                userLocation={userLocation}
                 onSelectPharmacy={handleSelectPharmacy}
                 onReportOpen={handleReportOpen}
                 isLoading={isLoading}
@@ -296,23 +288,20 @@ export function PharmacyFinder() {
               onRadiusChange={setRadius}
               onUseMyLocation={handleUseMyLocation}
               isLocating={isLocating}
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              onlyOnDuty={onlyOnDuty}
-              onOnlyOnDutyChange={setOnlyOnDuty}
             />
           </div>
 
           {/* Pharmacy List Container */}
           <div className="flex-1 overflow-hidden">
-            <PharmacyList
-              pharmacies={filteredPharmacies}
-              selectedPharmacy={selectedPharmacy}
-              onSelectPharmacy={handleSelectPharmacy}
-              onReportOpen={handleReportOpen}
-              isLoading={isLoading}
-              viewMode={viewMode}
-            />
+              <PharmacyList
+                pharmacies={filteredPharmacies}
+                selectedPharmacy={selectedPharmacy}
+                userLocation={userLocation}
+                onSelectPharmacy={handleSelectPharmacy}
+                onReportOpen={handleReportOpen}
+                isLoading={isLoading}
+                viewMode={viewMode}
+              />
           </div>
         </div>
 

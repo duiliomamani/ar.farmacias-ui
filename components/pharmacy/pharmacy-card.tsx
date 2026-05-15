@@ -14,17 +14,20 @@ import { useAuth } from '@/components/auth/auth-context'
 interface PharmacyCardProps {
   pharmacy: Pharmacy
   isSelected?: boolean
+  userLocation?: [number, number] | null
   onSelect?: (pharmacy: Pharmacy) => void
   onReportOpen?: (pharmacy: Pharmacy) => void
 }
 
-export function PharmacyCard({ pharmacy, isSelected, onSelect }: PharmacyCardProps) {
+export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: PharmacyCardProps) {
   const { toast } = useToast()
   const { isAuthenticated } = useAuth()
   const [isReporting, setIsReporting] = useState(false)
 
   const handleNavigate = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.lat},${pharmacy.lng}`
+    const origin = userLocation ? `${userLocation[0]},${userLocation[1]}` : ''
+    const destination = `${pharmacy.lat},${pharmacy.lng}`
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`
     window.open(url, '_blank')
   }
 

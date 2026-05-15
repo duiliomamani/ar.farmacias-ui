@@ -36,3 +36,22 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
+
+/**
+ * Returns the effective date for pharmacy duties.
+ * In Argentina, duties typically run from 8:00 AM to 8:00 AM the next day.
+ * If the current local time is before 8:00 AM, we are still in the previous day's duty cycle.
+ */
+export function getEffectiveDutyDate(): Date {
+  const now = new Date()
+  const hours = now.getHours()
+  
+  // If it's before 8 AM, use yesterday's date
+  if (hours < 8) {
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    return yesterday
+  }
+  
+  return now
+}

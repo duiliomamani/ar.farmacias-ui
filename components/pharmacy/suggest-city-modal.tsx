@@ -92,14 +92,19 @@ export function SuggestCityModal({ variant = 'default' }: SuggestCityModalProps)
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {variant === 'compact' ? (
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-            <span className="sr-only">Suggest City</span>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-10 w-10 shrink-0 bg-card border-border shadow-sm text-primary hover:bg-primary/5"
+            title="Sugerir ciudad"
+          >
+            <Plus className="h-5 w-5" strokeWidth={2.5} />
+            <span className="sr-only">Sugerir ciudad</span>
           </Button>
         ) : (
           <Button variant="outline" className="gap-2 font-semibold">
-            <MapPin className="h-4 w-4" strokeWidth={2.5} />
-            <span>Suggest City</span>
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            <span>Sugerir ciudad</span>
           </Button>
         )}
       </DialogTrigger>
