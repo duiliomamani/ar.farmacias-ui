@@ -46,12 +46,16 @@ export function getEffectiveDutyDate(): Date {
   const now = new Date()
   const hours = now.getHours()
   
-  // If it's before 8 AM, use yesterday's date
+  const effectiveDate = new Date(now)
+  
+  // If it's before 8 AM local time, we use the previous calendar day
   if (hours < 8) {
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    return yesterday
+    effectiveDate.setDate(now.getDate() - 1)
   }
   
-  return now
+  // Set to noon to avoid UTC day-flip issues when converting to ISO string
+  // (Argentina is UTC-3, so noon local is 15:00 UTC, same day)
+  effectiveDate.setHours(12, 0, 0, 0)
+  
+  return effectiveDate
 }
