@@ -19,26 +19,8 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: 'FarmaJUY - Farmacias de turno en Jujuy',
-  description: 'Find nearby on-duty pharmacies open 24/7 across Argentina. Locate emergency pharmacies, get directions, and contact information instantly.',
-  generator: 'v0.app',
-  keywords: ['pharmacy', 'on-duty', 'emergency', 'farmacias de turno', '24/7', 'healthcare', 'argentina'],
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
+  description: 'Encontrá farmacias de turno, permanentes y de atención voluntaria en Jujuy, con ubicación, indicaciones y reportes de la comunidad.',
+  keywords: ['farmacias de turno', 'farmacias', 'salud', 'emergencias', 'Jujuy', 'Argentina'],
 }
 
 export const viewport: Viewport = {

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { useQuery } from '@tanstack/react-query'
 import { SearchControls } from './search-controls'
 import { PharmacyList } from './pharmacy-list'
@@ -16,7 +17,7 @@ import {
   type Pharmacy,
 } from '@/lib/pharmacy-data'
 import { PharmacyService } from '@/lib/api'
-import { Pill, HeartPulse, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft } from 'lucide-react'
+import { Pill, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft } from 'lucide-react'
 import { getDeviceId, calculateDistance, getEffectiveDutyDate, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -180,8 +181,15 @@ export function PharmacyFinder() {
       {/* Top Navbar (Responsive for Mobile & Desktop) */}
       <header className="h-14 border-b bg-card/95 backdrop-blur-md shadow-sm z-50 flex items-center justify-between px-3 sm:px-6 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="bg-primary text-primary-foreground p-1.5 rounded-lg shadow-md ring-4 ring-primary/5 shrink-0">
-            <HeartPulse className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
+          <div className="h-10 w-10 shrink-0" aria-hidden="true">
+            <Image
+              src="/farmajuy-icon.png"
+              alt=""
+              width={40}
+              height={40}
+              priority
+              className="h-10 w-10 object-contain drop-shadow-sm"
+            />
           </div>
           <h1 className="text-base sm:text-lg font-heading font-black text-foreground tracking-tighter leading-tight truncate">
             FarmaJUY
