@@ -16,7 +16,7 @@ import {
   type Pharmacy,
 } from '@/lib/pharmacy-data'
 import { PharmacyService } from '@/lib/api'
-import { Pill, HeartPulse, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon } from 'lucide-react'
+import { Pill, HeartPulse, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft } from 'lucide-react'
 import { getDeviceId, calculateDistance, getEffectiveDutyDate, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -244,45 +244,59 @@ export function PharmacyFinder() {
 
           {/* Mobile-Only Overlays & Controls: hidden on md+ */}
           <div className="md:hidden">
-            {/* Top Compact Search Pill */}
-            <div className="absolute top-3 inset-x-3 z-30 pointer-events-auto">
-              <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md rounded-2xl p-2 shadow-lg border border-border/60">
-                <button
-                  type="button"
-                  onClick={() => setIsFilterModalOpen(true)}
-                  className="flex items-center gap-2.5 flex-1 text-left min-w-0 px-2 py-1 rounded-xl hover:bg-muted/50 transition-colors"
-                >
-                  <div className="p-1.5 bg-primary/10 text-primary rounded-full shrink-0">
-                    <MapPin className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-foreground leading-tight truncate">
-                      {searchMode === 'nearby'
-                        ? (userLocation ? 'Cerca de mi ubicación' : 'Buscar por radio')
-                        : (selectedCity || 'Todas las localidades')}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground font-medium truncate">
-                      {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-[10px] font-bold text-foreground shrink-0 border border-border/50">
-                    <SlidersHorizontal className="h-3 w-3 text-primary" />
-                    <span>Filtros</span>
-                  </div>
-                </button>
+            {/* Top Compact Search Pill or Back Button */}
+            {!selectedPharmacy ? (
+              <div className="absolute top-3 inset-x-3 z-30 pointer-events-auto">
+                <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md rounded-2xl p-2 shadow-lg border border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterModalOpen(true)}
+                    className="flex items-center gap-2.5 flex-1 text-left min-w-0 px-2 py-1 rounded-xl hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="p-1.5 bg-primary/10 text-primary rounded-full shrink-0">
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-foreground leading-tight truncate">
+                        {searchMode === 'nearby'
+                          ? (userLocation ? 'Cerca de mi ubicación' : 'Buscar por radio')
+                          : (selectedCity || 'Todas las localidades')}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium truncate">
+                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-[10px] font-bold text-foreground shrink-0 border border-border/50">
+                      <SlidersHorizontal className="h-3 w-3 text-primary" />
+                      <span>Filtros</span>
+                    </div>
+                  </button>
 
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8 shrink-0 rounded-xl bg-background"
+                    onClick={handleUseMyLocation}
+                    disabled={isLocating}
+                    title="Usar mi ubicación actual"
+                  >
+                    <Crosshair className={cn("h-4 w-4 text-primary", isLocating && "animate-spin")} />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="absolute top-3 left-3 z-30 pointer-events-auto">
                 <Button
-                  size="icon"
+                  size="sm"
                   variant="outline"
-                  className="h-8 w-8 shrink-0 rounded-xl bg-background"
-                  onClick={handleUseMyLocation}
-                  disabled={isLocating}
-                  title="Usar mi ubicación actual"
+                  className="rounded-full bg-card/95 backdrop-blur-md shadow-md border border-border/80 text-xs font-bold gap-1.5 h-9 px-3.5 hover:bg-card active:scale-95 transition-all text-foreground"
+                  onClick={() => handleSelectPharmacy(null)}
                 >
-                  <Crosshair className={cn("h-4 w-4 text-primary", isLocating && "animate-spin")} />
+                  <ArrowLeft className="h-3.5 w-3.5 text-primary" />
+                  <span>Volver a farmacias</span>
                 </Button>
               </div>
-            </div>
+            )}
 
             {/* Mobile Filter Modal */}
             <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
@@ -322,7 +336,7 @@ export function PharmacyFinder() {
             </Dialog>
 
             {/* Floating Quick GPS Button on Map */}
-            <div className="absolute right-3.5 bottom-24 z-30 flex flex-col gap-2 pointer-events-auto">
+            <div className={cn("absolute right-3.5 z-30 flex flex-col gap-2 pointer-events-auto transition-all", selectedPharmacy ? "bottom-[calc(55dvh+12px)] sm:bottom-24" : "bottom-24")}>
               <Button
                 size="icon"
                 variant="secondary"
@@ -335,55 +349,60 @@ export function PharmacyFinder() {
               </Button>
             </div>
 
-            {/* Floating Center Map/List Toggle Pill */}
-            <div className="absolute bottom-[76px] inset-x-0 z-30 flex justify-center pointer-events-none">
-              <Button
-                size="sm"
-                className="pointer-events-auto rounded-full shadow-xl bg-foreground text-background font-bold text-xs px-4 h-9 gap-1.5 hover:bg-foreground/90 transition-transform active:scale-95"
-                onClick={() => setMobileSheetState((prev) => (prev === 'collapsed' ? 'expanded' : 'collapsed'))}
-              >
-                {mobileSheetState === 'collapsed' ? (
-                  <>
-                    <List className="h-3.5 w-3.5" />
-                    <span>Ver lista ({filteredPharmacies.length})</span>
-                  </>
-                ) : (
-                  <>
-                    <MapIcon className="h-3.5 w-3.5" />
-                    <span>Ver mapa</span>
-                  </>
-                )}
-              </Button>
-            </div>
+            {/* Floating Center Map/List Toggle Pill (only when not inspecting a single route) */}
+            {!selectedPharmacy && (
+              <div className="absolute bottom-[76px] inset-x-0 z-30 flex justify-center pointer-events-none">
+                <Button
+                  size="sm"
+                  className="pointer-events-auto rounded-full shadow-xl bg-foreground text-background font-bold text-xs px-4 h-9 gap-1.5 hover:bg-foreground/90 transition-transform active:scale-95"
+                  onClick={() => setMobileSheetState((prev) => (prev === 'collapsed' ? 'expanded' : 'collapsed'))}
+                >
+                  {mobileSheetState === 'collapsed' ? (
+                    <>
+                      <List className="h-3.5 w-3.5" />
+                      <span>Ver lista ({filteredPharmacies.length})</span>
+                    </>
+                  ) : (
+                    <>
+                      <MapIcon className="h-3.5 w-3.5" />
+                      <span>Ver mapa</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
 
-            {/* Mobile Bottom Sheet for Pharmacy List */}
-            <BottomSheet
-              isOpen={true}
-              sheetState={mobileSheetState}
-              onStateChange={setMobileSheetState}
-              peekTitle={
-                <div className="flex items-center justify-between w-full pr-1">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                    <span className="font-heading font-black text-xs text-foreground uppercase tracking-tight">
-                      {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia de turno' : 'farmacias de turno'}
+            {/* Mobile Bottom Sheet for Pharmacy List (only when not inspecting a single route) */}
+            {!selectedPharmacy && (
+              <BottomSheet
+                isOpen={true}
+                sheetState={mobileSheetState}
+                onStateChange={setMobileSheetState}
+                peekTitle={
+                  <div className="flex items-center justify-between w-full pr-1">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                      <span className="font-heading font-black text-xs text-foreground uppercase tracking-tight">
+                        {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia de turno' : 'farmacias de turno'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      {mobileSheetState === 'expanded' ? 'Ver mapa' : 'Ver lista'}
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {mobileSheetState === 'expanded' ? 'Ver mapa' : 'Ver lista'}
-                  </span>
-                </div>
-              }
-            >
-              <PharmacyList
-                pharmacies={filteredPharmacies}
-                selectedPharmacy={selectedPharmacy}
-                userLocation={userLocation}
-                onSelectPharmacy={handleSelectPharmacy}
-                isLoading={isLoading}
-                viewMode="map"
-              />
-            </BottomSheet>
+                }
+              >
+                <PharmacyList
+                  pharmacies={filteredPharmacies}
+                  selectedPharmacy={selectedPharmacy}
+                  userLocation={userLocation}
+                  onSelectPharmacy={handleSelectPharmacy}
+                  isLoading={isLoading}
+                  viewMode="map"
+                  hideHeader={true}
+                />
+              </BottomSheet>
+            )}
           </div>
         </div>
       </main>

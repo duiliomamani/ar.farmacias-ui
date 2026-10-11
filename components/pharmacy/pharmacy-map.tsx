@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
-import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X } from 'lucide-react'
+import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import 'leaflet/dist/leaflet.css'
@@ -21,10 +21,6 @@ const TileLayer = dynamic(
 )
 const Marker = dynamic(
   () => import('react-leaflet').then((mod) => mod.Marker),
-  { ssr: false }
-)
-const Popup = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
 )
 
@@ -170,6 +166,7 @@ function PharmacyMapContent({
 }: PharmacyMapProps) {
   const mapRef = useRef<L.Map | null>(null)
   const [routeSummary, setRouteSummary] = useState<RouteSummary | null>(null)
+  const [showInstructions, setShowInstructions] = useState(false)
 
   // Some official records share the same geocoded point. Keep their real
   // coordinates for routing, but fan the visual markers out so none is hidden.
@@ -206,10 +203,12 @@ function PharmacyMapContent({
     if (mapRef.current && selectedPharmacy) {
       mapRef.current.setView([selectedPharmacy.lat, selectedPharmacy.lng], 16)
     }
+    setShowInstructions(false)
   }, [selectedPharmacy])
 
   useEffect(() => {
     setRouteSummary(null)
+    setShowInstructions(false)
   }, [selectedPharmacy?.id, userLocation?.[0], userLocation?.[1], travelMode])
 
   // Update map center when the center prop changes (e.g., from geolocation)
@@ -416,171 +415,181 @@ function PharmacyMapContent({
             eventHandlers={{
               click: () => onSelectPharmacy?.(pharmacy),
             }}
-          >
-            <Popup className="farmaya-popup">
-              <div className="p-4 min-w-[240px] flex flex-col gap-3">
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex flex-col gap-0.5">
-                    <h3 className="font-heading font-black text-base leading-tight tracking-tight uppercase">{pharmacy.name}</h3>
-                    <p className="text-[11px] font-medium text-muted-foreground line-clamp-1">{pharmacy.address}</p>
-                  </div>
-                  {pharmacy.verificationStatus === 'verified' && (
-                    <div className="bg-green-100 p-1 rounded-full shrink-0">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    </div>
-                  )}
-                  {pharmacy.verificationStatus === 'pending' && (
-                    <div className="bg-amber-100 p-1 rounded-full shrink-0">
-                      <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={pharmacy.isOnDuty || pharmacy.isVoluntary ? "default" : "secondary"}
-                      className={cn(
-                        "text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
-                        pharmacy.isVoluntary
-                          ? "bg-blue-600 text-white"
-                          : pharmacy.isOnDuty ? "bg-primary" : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {pharmacy.isVoluntary
-                        ? 'Turno voluntario · llamar antes de ir'
-                        : pharmacy.isOnDuty
-                        ? (pharmacy.isPermanentlyOnDuty || pharmacy.openingHours?.toLowerCase().includes('24hs')
-                            ? 'Atención Permanente 24hs'
-                            : (() => {
-                                if (!pharmacy.dutyUntil) return 'Abierta ahora';
-                                const until = new Date(pharmacy.dutyUntil);
-                                const now = new Date();
-                                const isTomorrow = until.getDate() !== now.getDate();
-                                const timeStr = until.toLocaleTimeString('es-AR', { 
-                                  timeZone: 'America/Argentina/Buenos_Aires', 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                }) + 'hs';
-                                return isTomorrow ? `De Turno hasta mañana ${timeStr}` : `De Turno hasta las ${timeStr}`;
-                              })())
-                        : 'Cerrada ahora'}
-                    </Badge>
-                  </div>
-
-                  {pharmacy.openingHours && !pharmacy.openingHours.toLowerCase().includes('24hs') && (
-                    <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest -mt-1 px-1">
-                      {pharmacy.openingHours}
-                    </p>
-                  )}
-
-                  {/* Community Report Message in Popup */}
-                  {(() => {
-                    const latestReport = pharmacy.communityReports?.[0];
-                    if (latestReport && !latestReport.isOnDuty) {
-                      const minutes = Math.floor((Date.now() - new Date(latestReport.createdAt).getTime()) / 60000);
-                      const timeStr = minutes >= 60 ? `${Math.floor(minutes / 60)} hs` : `${minutes} min`;
-                      return (
-                        <div className="bg-orange-50 text-orange-700 border-orange-200 border px-2 py-1.5 rounded-lg text-[9px] font-bold flex items-center gap-1.5 animate-pulse">
-                          <span>⚠️</span> Reportada como cerrada hace {timeStr}
-                        </div>
-                      );
-                    }
-                    const recentVerifiedReport = pharmacy.communityReports?.find(
-                      (r) => r.isOnDuty && (Date.now() - new Date(r.createdAt).getTime()) < 2 * 60 * 60 * 1000
-                    );
-                    if (recentVerifiedReport) {
-                      const minutes = Math.floor((Date.now() - new Date(recentVerifiedReport.createdAt).getTime()) / 60000);
-                      const timeStr = minutes >= 60 ? `${Math.floor(minutes / 60)} hs` : `${minutes} min`;
-                      return (
-                        <div className="bg-green-50 text-green-700 border-green-200 border px-2 py-1.5 rounded-lg text-[9px] font-bold flex items-center gap-1.5">
-                          <span>✅</span> Confirmada por la comunidad hace {timeStr}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 bg-muted/30 px-2 py-1.5 rounded-lg border border-border/50">
-                    <span>Distancia</span>
-                    <span className="text-foreground">{pharmacy.distance?.toFixed(1)} km</span>
-                  </div>
-
-                  <Button 
-                    size="sm"
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-black uppercase tracking-widest h-10 shadow-md gap-2"
-                    onClick={() => handleNavigate(pharmacy)}
-                  >
-                    <Navigation className="h-3.5 w-3.5" strokeWidth={3} />
-                    Navegar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full text-[10px] font-black uppercase tracking-widest h-9 gap-2"
-                    onClick={() => handleStreetView(pharmacy)}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Ver calle
-                  </Button>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
+          />
         ))}
       </MapContainer>
       {selectedPharmacy && (
-        <div className="absolute top-16 left-3 right-3 sm:left-auto sm:right-4 sm:top-4 z-[500] sm:w-[360px] max-h-[calc(100vh-120px)] rounded-xl border bg-card/95 p-3.5 shadow-xl backdrop-blur flex flex-col">
-          <div className="flex items-start justify-between gap-2">
+        <div className="absolute bottom-3 inset-x-3 sm:bottom-auto sm:inset-x-auto sm:right-4 sm:top-4 z-[500] sm:w-[360px] max-h-[55dvh] rounded-2xl border bg-card/98 p-4 shadow-2xl backdrop-blur-md flex flex-col">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cómo llegar</p>
-              <p className="mt-0.5 text-sm font-bold text-foreground truncate">{selectedPharmacy.name}</p>
+              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                <Badge
+                  className={cn(
+                    'text-[9px] font-black uppercase tracking-widest px-2 py-0.5 h-4.5',
+                    selectedPharmacy.isVoluntary
+                      ? 'bg-blue-600 text-white'
+                      : selectedPharmacy.isOnDuty
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {selectedPharmacy.isVoluntary
+                    ? 'Turno voluntario'
+                    : selectedPharmacy.isOnDuty
+                      ? 'De Turno'
+                      : 'Cerrada'}
+                </Badge>
+                {selectedPharmacy.isPermanentlyOnDuty && (
+                  <Badge className="h-4.5 border border-sky-500/30 bg-sky-500/10 px-1.5 py-0 text-[9px] font-black uppercase tracking-widest text-sky-700 dark:text-sky-300">
+                    Permanente
+                  </Badge>
+                )}
+                {selectedPharmacy.distance !== undefined && (
+                  <span className="text-[10px] font-bold text-muted-foreground ml-1">
+                    {selectedPharmacy.distance.toFixed(1)} km
+                  </span>
+                )}
+              </div>
+              <h3 className="text-base font-heading font-black text-foreground truncate uppercase tracking-tight">
+                {selectedPharmacy.name}
+              </h3>
+              <p className="text-xs text-muted-foreground truncate">
+                {selectedPharmacy.address}
+              </p>
+              {selectedPharmacy.openingHours && (
+                <p className="text-[11px] text-muted-foreground/90 font-medium truncate mt-0.5">
+                  🕒 Horario: {selectedPharmacy.openingHours}
+                </p>
+              )}
+              {selectedPharmacy.isVoluntary && (
+                <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+                  ⚠️ Atención no garantizada. Llamar antes de ir.
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleNavigate(selectedPharmacy)} aria-label="Iniciar navegación">
-                <Navigation className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => onSelectPharmacy?.(null)} aria-label="Cerrar detalles de ruta">
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full"
+                onClick={() => onSelectPharmacy?.(null)}
+                aria-label="Cerrar detalles de ruta"
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+
+          <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
             {([
               ['driving', Car, 'Auto'],
               ['walking', Footprints, 'A pie'],
               ['cycling', Bike, 'Bici'],
             ] as const).map(([mode, Icon, label]) => (
-              <Button key={mode} size="sm" variant={travelMode === mode ? 'default' : 'ghost'} className="h-8 gap-1 px-2 text-[11px]" onClick={() => onTravelModeChange(mode)}>
+              <Button
+                key={mode}
+                size="sm"
+                variant={travelMode === mode ? 'default' : 'ghost'}
+                className={cn(
+                  "h-8 gap-1.5 px-2 text-xs font-bold rounded-lg transition-all",
+                  travelMode === mode ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTravelModeChange(mode)}
+              >
                 <Icon className="h-3.5 w-3.5" />{label}
               </Button>
             ))}
           </div>
+
           {routeSummary ? (
             <>
-              <p className="mt-3 text-sm font-bold text-foreground">
-                {routeSummary.durationMinutes} min · {routeSummary.distanceKm.toFixed(1)} km
-              </p>
-              <p className="text-[10px] text-muted-foreground">Tiempo estimado actualizado</p>
-              <div className="mt-3 max-h-48 space-y-2 overflow-y-auto border-t pt-3">
-                {routeSummary.instructions.map((instruction, index) => (
-                  <div key={`${index}-${instruction.text}`} className="flex gap-2 text-xs">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{index + 1}</span>
-                    <div>
-                      <p className="leading-tight text-foreground">{instruction.text}</p>
-                      {instruction.distanceMeters > 0 && <p className="mt-0.5 text-[10px] text-muted-foreground">{formatDistance(instruction.distanceMeters)}</p>}
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-2.5 flex items-center justify-between">
+                <div>
+                  <span className="text-base font-black text-foreground">
+                    {routeSummary.durationMinutes} min
+                  </span>
+                  <span className="text-xs font-semibold text-muted-foreground ml-1.5">
+                    ({routeSummary.distanceKm.toFixed(1)} km)
+                  </span>
+                </div>
+                {routeSummary.instructions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInstructions((prev) => !prev)}
+                    className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer py-1 px-1.5 rounded-md hover:bg-primary/5 transition-colors"
+                  >
+                    <span>{showInstructions ? 'Ocultar pasos' : `${routeSummary.instructions.length} indicaciones`}</span>
+                    {showInstructions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                )}
               </div>
-              <Button className="mt-3 w-full gap-2" onClick={() => handleNavigate(selectedPharmacy)}>
-                <Navigation className="h-4 w-4" /> Iniciar navegación
-              </Button>
+
+              {showInstructions && routeSummary.instructions.length > 0 && (
+                <div className="mt-2 max-h-36 space-y-1.5 overflow-y-auto border-t pt-2 pr-1">
+                  {routeSummary.instructions.map((instruction, index) => (
+                    <div key={`${index}-${instruction.text}`} className="flex gap-2 text-xs">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="leading-tight text-foreground text-xs">{instruction.text}</p>
+                        {instruction.distanceMeters > 0 && (
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">{formatDistance(instruction.distanceMeters)}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-2.5 flex items-center gap-2">
+                <Button
+                  className="flex-1 h-10 gap-2 font-black text-xs uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-md rounded-xl"
+                  onClick={() => handleNavigate(selectedPharmacy)}
+                >
+                  <Navigation className="h-4 w-4" strokeWidth={2.5} /> Iniciar navegación
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+                  onClick={() => handleStreetView(selectedPharmacy)}
+                  title="Ver en Street View"
+                  aria-label="Ver calle"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
             </>
           ) : userLocation ? (
-            <p className="mt-3 text-xs text-muted-foreground">Calculando ruta...</p>
+            <div className="mt-3 flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+              <div className="h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span>Calculando la mejor ruta...</span>
+            </div>
           ) : (
-            <p className="mt-3 text-xs text-muted-foreground">Usá tu ubicación actual para calcular la ruta.</p>
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Habilitá tu ubicación para calcular el tiempo y las indicaciones exactas.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="flex-1 h-10 gap-2 font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-md"
+                  onClick={() => handleNavigate(selectedPharmacy)}
+                >
+                  <Navigation className="h-3.5 w-3.5" /> Abrir en Google Maps
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+                  onClick={() => handleStreetView(selectedPharmacy)}
+                  title="Ver en Street View"
+                  aria-label="Ver calle"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       )}
