@@ -74,8 +74,8 @@ export function Feedback({ inline = false }: FeedbackProps) {
         return
       }
 
-      const src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-      const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
+      const src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+      const existing = document.querySelector<HTMLScriptElement>('script[src^="https://challenges.cloudflare.com/turnstile/v0/api.js"]')
       if (turnstileRetry > 0 && existing && !window.turnstile) {
         existing.remove()
       }

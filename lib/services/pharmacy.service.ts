@@ -50,6 +50,16 @@ export class PharmacyService {
     return data.map(mapBackendPharmacy);
   }
 
+  static async submitCommunityReport(pharmacyId: string, report: {
+    isOpen: boolean;
+    lat: number;
+    lng: number;
+    deviceId: string;
+    turnstileToken: string;
+  }): Promise<{ accepted: boolean; expiresAt: string }> {
+    return BffClient.post(`/api/pharmacies/${encodeURIComponent(pharmacyId)}/community-reports`, report);
+  }
+
 }
 
 export default PharmacyService;
