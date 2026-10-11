@@ -58,14 +58,18 @@ export async function bffFetch<T>(
 
     if (!response.ok || payload?.isSuccessful === false) {
       const message = errorMessage(payload, response.status)
-      if (showToast) toast.error(message)
+      if (showToast) toast.error(message, { id: `bff-${response.status}-${message}` })
       throw new BffClientError(response.status, message)
     }
 
     return (payload && 'data' in payload ? payload.data : payload) as T
   } catch (error) {
     if (error instanceof BffClientError) throw error
-    if (showToast) toast.error('Error de conexión. Verifica tu conexión a internet.')
+    if (showToast) {
+      toast.error('Error de conexión. Verifica tu conexión a internet.', {
+        id: 'bff-connection-error',
+      })
+    }
     throw new BffClientError(0, 'Error de conexión con el BFF')
   }
 }
