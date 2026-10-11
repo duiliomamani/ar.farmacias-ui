@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { es } from 'date-fns/locale'
-import { CalendarDays, Clock3, MapPin, Pill, ShieldCheck, Sparkles } from 'lucide-react'
+import { CalendarDays, Clock3, Info, MapPin, Pill, ShieldCheck, Sparkles } from 'lucide-react'
 import { PharmacyService } from '@/lib/api'
 import { groupPharmacies } from '@/lib/pharmacy-data'
 import { Button } from '@/components/ui/button'
@@ -42,8 +42,7 @@ function inputDate(value: string) {
 
 function dayContext(date: string) {
   const today = inputValue(new Date())
-  if (date === today) return 'Turnos de hoy'
-  return date < today ? 'Historial de turnos' : 'Próximos turnos'
+  return date === today ? 'Turnos de hoy' : 'Próximos turnos'
 }
 
 export function GlobalDutyCalendar({
@@ -54,14 +53,16 @@ export function GlobalDutyCalendar({
   cities,
   onApply,
 }: GlobalDutyCalendarProps) {
-  const [previewDate, setPreviewDate] = useState(selectedDate)
+  const today = inputValue(new Date())
+  const [previewDate, setPreviewDate] = useState(() => selectedDate < today ? today : selectedDate)
   const [previewCity, setPreviewCity] = useState(selectedCity)
+  const isFutureDate = previewDate > today
 
   useEffect(() => {
     if (!open) return
-    setPreviewDate(selectedDate)
+    setPreviewDate(selectedDate < today ? today : selectedDate)
     setPreviewCity(selectedCity)
-  }, [open, selectedCity, selectedDate])
+  }, [open, selectedCity, selectedDate, today])
 
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ['global-duty-calendar', previewDate, previewCity],
@@ -99,7 +100,7 @@ export function GlobalDutyCalendar({
               Calendario de turnos de Jujuy
             </DialogTitle>
             <DialogDescription className="text-xs leading-relaxed">
-              Elegí cualquier día del mes para consultar todas las farmacias conocidas, no solamente una farmacia particular.
+              Consultá desde hoy en adelante todas las farmacias conocidas de Jujuy, no solamente una farmacia particular.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -111,6 +112,8 @@ export function GlobalDutyCalendar({
               locale={es}
               selected={inputDate(previewDate)}
               defaultMonth={inputDate(previewDate)}
+              startMonth={inputDate(today)}
+              disabled={{ before: inputDate(today) }}
               onSelect={(date) => date && setPreviewDate(inputValue(date))}
               className="mx-auto w-full rounded-2xl border bg-card p-3 shadow-sm [--cell-size:--spacing(9)]"
               classNames={{ root: 'w-full', month: 'w-full flex flex-col gap-4' }}
@@ -133,6 +136,15 @@ export function GlobalDutyCalendar({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {previewCity || 'Todas las localidades de Jujuy'}
             </p>
+
+            {isFutureDate && (
+              <div className="mt-3 flex gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-[11px] leading-relaxed text-amber-800 dark:text-amber-200">
+                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  La fuente oficial publica principalmente el turno del día. Para esta fecha mostramos permanentes y cualquier turno futuro ya conocido; el listado puede completarse cuando llegue ese día.
+                </p>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-center">
