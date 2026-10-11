@@ -158,8 +158,13 @@ export function Feedback({ inline = false }: FeedbackProps) {
       }
     }}>
       <DialogTrigger asChild>
-        <Button variant="outline" className={inline ? 'h-8 gap-2 px-3 text-xs' : 'fixed bottom-4 left-4 z-[600] gap-2 rounded-full bg-card/95 shadow-lg'}>
-          <MessageSquare className="h-4 w-4" /> Feedback
+        <Button
+          variant="outline"
+          aria-label="Enviar Feedback"
+          className={inline ? 'h-8 gap-1.5 px-2.5 sm:px-3 text-xs' : 'fixed bottom-4 left-4 z-[600] gap-2 rounded-full bg-card/95 shadow-lg'}
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span className="hidden sm:inline">Feedback</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

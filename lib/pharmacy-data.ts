@@ -29,6 +29,7 @@ export interface Pharmacy {
   dutyUntil?: string;
   dutyFrom?: string;
   isPermanentlyOnDuty?: boolean;
+  isVoluntary?: boolean;
   distance?: number;
   veracityScore?: number; 
   city?: string;

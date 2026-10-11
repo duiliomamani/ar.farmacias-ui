@@ -73,7 +73,7 @@ export function SearchControls({
 
         {searchMode === 'locality' && (
           <div className="grid gap-2 sm:grid-cols-2">
-            <Select value={selectedCity || 'ALL'} onValueChange={(value) => onCityChange(value === 'ALL' ? '' : value)}>
+            <Select value={selectedCity || 'ALL'} onValueChange={(value) => onCityChange(!value || value === 'ALL' ? '' : value)}>
               <SelectTrigger className="w-full bg-background text-xs">
                 <SelectValue placeholder="Todas las localidades" />
               </SelectTrigger>
@@ -97,30 +97,38 @@ export function SearchControls({
       </div>
 
       {/* Radius Slider */}
-      <div className="space-y-3 bg-card/50 p-3 rounded-xl border border-border/50">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
-            Radio de búsqueda
-          </Label>
-          <span className="text-sm font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-            {radius < 1 ? `${radius * 1000}m` : `${radius} km`}
-          </span>
+      {searchMode === 'nearby' && (
+        <div className="space-y-3 bg-card/50 p-3 rounded-xl border border-border/50">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
+              Radio de búsqueda
+            </Label>
+            <span className="text-sm font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+              {radius < 1 ? `${radius * 1000}m` : `${radius} km`}
+            </span>
+          </div>
+          <Slider
+            value={[radius]}
+            onValueChange={(value) => {
+              if (Array.isArray(value) && typeof value[0] === 'number') {
+                onRadiusChange(value[0])
+              } else if (typeof value === 'number') {
+                onRadiusChange(value)
+              }
+            }}
+            min={0.5}
+            max={20}
+            step={0.5}
+            className="w-full"
+          />
+          <div className="flex justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+            <span>0.5 km</span>
+            <span>10 km</span>
+            <span>20 km</span>
+          </div>
         </div>
-        <Slider
-          value={[radius]}
-          onValueChange={(value) => onRadiusChange(value[0])}
-          min={0.5}
-          max={20}
-          step={0.5}
-          className="w-full"
-        />
-        <div className="flex justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-          <span>0.5 km</span>
-          <span>10 km</span>
-          <span>20 km</span>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

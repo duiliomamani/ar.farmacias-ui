@@ -23,8 +23,6 @@ export function PharmacyList({
   isLoading,
   viewMode = 'map',
 }: PharmacyListProps) {
-  const onDutyCount = pharmacies.filter((p) => p.isOnDuty || p.type === 'hospital').length
-
   return (
     <div className="flex flex-col h-full bg-background/50">
       {/* Header */}
@@ -70,7 +68,8 @@ export function PharmacyList({
           )}>
             {[
               { title: 'Farmacias permanentes', items: pharmacies.filter((pharmacy) => pharmacy.isPermanentlyOnDuty) },
-              { title: 'Turnos del día', items: pharmacies.filter((pharmacy) => !pharmacy.isPermanentlyOnDuty) },
+              { title: 'Turnos del día', items: pharmacies.filter((pharmacy) => pharmacy.isOnDuty && !pharmacy.isPermanentlyOnDuty && !pharmacy.isVoluntary) },
+              { title: 'Turnos voluntarios', items: pharmacies.filter((pharmacy) => pharmacy.isVoluntary) },
             ].map((section) => section.items.length > 0 && (
               <div key={section.title} className={viewMode === 'list' ? 'contents' : 'space-y-2'}>
                 <div className="flex items-center gap-2 px-1 pt-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">

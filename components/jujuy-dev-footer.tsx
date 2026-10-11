@@ -43,10 +43,17 @@ function JujuyDevLogo() {
 export function JujuyDevLinks() {
   return (
     <div className="flex items-center gap-1" aria-label="Redes sociales de jujuy.dev">
-      <a href="https://jujuy.dev.ar/?utm_source=ig&utm_medium=social&utm_content=link_in_bio" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/10">
-        <JujuyDevLogo />jujuy.dev
+      <a
+        href="https://jujuy.dev.ar/?utm_source=ig&utm_medium=social&utm_content=link_in_bio"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-bold text-primary hover:bg-primary/10"
+        title="jujuy.dev"
+      >
+        <JujuyDevLogo />
+        <span className="hidden sm:inline">jujuy.dev</span>
       </a>
-      <nav className="flex items-center gap-1" aria-label="Redes sociales de jujuy.dev">
+      <nav className="hidden sm:flex items-center gap-1" aria-label="Redes sociales de jujuy.dev">
         {links.map(({ href, label, icon: Icon }) => (
           <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
             {label === 'X' ? <XLogo /> : Icon && <Icon className="h-5 w-5" />}

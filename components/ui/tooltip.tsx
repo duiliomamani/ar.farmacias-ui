@@ -17,7 +17,7 @@ function TooltipTrigger({ asChild = false, children, ...props }: TooltipPrimitiv
   return (
     <TooltipPrimitive.Trigger
       data-slot='tooltip-trigger'
-      render={asChild ? React.Children.only(children) : undefined}
+      render={asChild && React.isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? null : children}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
-import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation } from 'lucide-react'
+import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import 'leaflet/dist/leaflet.css'
@@ -149,7 +149,7 @@ interface PharmacyMapProps {
   pharmacies: Pharmacy[]
   center: [number, number]
   selectedPharmacy?: Pharmacy | null
-  onSelectPharmacy?: (pharmacy: Pharmacy) => void
+  onSelectPharmacy?: (pharmacy: Pharmacy | null) => void
   userLocation?: [number, number] | null
   fitToPharmacies?: boolean
   travelMode: TravelMode
@@ -290,6 +290,12 @@ function PharmacyMapContent({
     if (pharmacy.isOnDuty) {
       color = '#22c55e' // Green (Open)
       iconPath = '<path d="M12 2v20M2 12h20"/>' // Cross
+    }
+
+    if (pharmacy.isVoluntary) {
+      color = '#2563eb' // Blue (Voluntary, availability not guaranteed)
+      iconPath = '<path d="M12 2v20M2 12h20"/>' // Cross
+      extraClass += ' voluntary-marker'
     }
 
     if (pharmacy.verificationStatus === 'community_verified') {
@@ -433,13 +439,17 @@ function PharmacyMapContent({
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center gap-2">
                     <Badge 
-                      variant={pharmacy.isOnDuty ? "default" : "secondary"}
+                      variant={pharmacy.isOnDuty || pharmacy.isVoluntary ? "default" : "secondary"}
                       className={cn(
                         "text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
-                        pharmacy.isOnDuty ? "bg-primary" : "bg-muted text-muted-foreground"
+                        pharmacy.isVoluntary
+                          ? "bg-blue-600 text-white"
+                          : pharmacy.isOnDuty ? "bg-primary" : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {pharmacy.isOnDuty 
+                      {pharmacy.isVoluntary
+                        ? 'Turno voluntario · llamar antes de ir'
+                        : pharmacy.isOnDuty
                         ? (pharmacy.isPermanentlyOnDuty || pharmacy.openingHours?.toLowerCase().includes('24hs')
                             ? 'Atención Permanente 24hs'
                             : (() => {
@@ -520,15 +530,20 @@ function PharmacyMapContent({
         ))}
       </MapContainer>
       {selectedPharmacy && (
-        <div className="absolute right-4 top-4 z-[500] w-[min(360px,calc(100%-2rem))] rounded-xl border bg-card/95 p-4 shadow-xl backdrop-blur">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+        <div className="absolute top-16 left-3 right-3 sm:left-auto sm:right-4 sm:top-4 z-[500] sm:w-[360px] max-h-[calc(100vh-120px)] rounded-xl border bg-card/95 p-3.5 shadow-xl backdrop-blur flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cómo llegar</p>
-              <p className="mt-1 text-sm font-bold text-foreground">{selectedPharmacy.name}</p>
+              <p className="mt-0.5 text-sm font-bold text-foreground truncate">{selectedPharmacy.name}</p>
             </div>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleNavigate(selectedPharmacy)} aria-label="Iniciar navegación">
-              <Navigation className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleNavigate(selectedPharmacy)} aria-label="Iniciar navegación">
+                <Navigation className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => onSelectPharmacy?.(null)} aria-label="Cerrar detalles de ruta">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
             {([

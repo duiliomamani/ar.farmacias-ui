@@ -15,7 +15,7 @@ function DialogTrigger({ asChild = false, children, ...props }: DialogPrimitive.
   return (
     <DialogPrimitive.Trigger
       data-slot='dialog-trigger'
-      render={asChild ? React.Children.only(children) : undefined}
+      render={asChild && React.isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? null : children}

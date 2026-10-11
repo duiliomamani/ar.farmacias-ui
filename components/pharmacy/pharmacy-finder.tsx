@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { SearchControls } from './search-controls'
 import { PharmacyList } from './pharmacy-list'
-import { BottomSheet } from './bottom-sheet'
+import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
 import { Feedback } from '@/components/feedback'
@@ -16,10 +16,11 @@ import {
   type Pharmacy,
 } from '@/lib/pharmacy-data'
 import { PharmacyService } from '@/lib/api'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { Pill, HeartPulse } from 'lucide-react'
-import { getDeviceId, calculateDistance, getEffectiveDutyDate } from '@/lib/utils'
+import { Pill, HeartPulse, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon } from 'lucide-react'
+import { getDeviceId, calculateDistance, getEffectiveDutyDate, cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const JUJUY_CITIES = [
   'ABRA PAMPA', 'CALILEGUA', 'EL CARMEN', 'FRAILE PINTADO', 'HUMAHUACA',
@@ -56,20 +57,18 @@ const PharmacyMap = dynamic(
 )
 
 export function PharmacyFinder() {
-  const isMobile = useIsMobile()
   const [radius, setRadius] = useState(5)
   const [isLocating, setIsLocating] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
-  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(true)
   const [searchMode, setSearchMode] = useState<'nearby' | 'locality'>('nearby')
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedDate, setSelectedDate] = useState(dateInputValue(getEffectiveDutyDate()))
   const [travelMode, setTravelMode] = useState<TravelMode>('driving')
-
-  // New Filter States
-  const [onlyOnDuty, setOnlyOnDuty] = useState(true)
+  // Mobile-specific UI states
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [mobileSheetState, setMobileSheetState] = useState<SheetState>('collapsed')
 
   // Initialize device ID
   useEffect(() => {
@@ -146,136 +145,62 @@ export function PharmacyFinder() {
 
   // Group pharmacies by location and calculate distance client-side for accuracy
   const groupedPharmacies = useMemo(() => {
-    const grouped = groupPharmacies(rawPharmacies);
+    const grouped = groupPharmacies(rawPharmacies)
     const center = userLocation || mapCenter
 
     // Recalculate distance based on actual user location
-    return grouped.map(p => ({
+    return grouped.map((p) => ({
       ...p,
-      distance: calculateDistance(center[0], center[1], p.lat, p.lng)
-    }));
-  }, [rawPharmacies, userLocation, mapCenter]);
+      distance: calculateDistance(center[0], center[1], p.lat, p.lng),
+    }))
+  }, [rawPharmacies, userLocation, mapCenter])
 
-  // Filter and sort pharmacies (local filtering for on-duty and radius)
+  // Filter by radius when searching nearby, then sort all returned categories.
   const filteredPharmacies = useMemo(() => {
-    let result = searchMode === 'locality'
+    const result = searchMode === 'locality'
       ? groupedPharmacies
       : filterPharmacies(groupedPharmacies, radius)
 
-    if (onlyOnDuty) {
-      result = result.filter(p => p.isOnDuty);
-    }
-
-    return sortPharmacies(result);
-  }, [groupedPharmacies, radius, onlyOnDuty, searchMode]);
+    return sortPharmacies(result)
+  }, [groupedPharmacies, radius, searchMode])
 
   const isLoading = isDataLoading || isLocating
 
-  const handleSelectPharmacy = useCallback((pharmacy: Pharmacy) => {
+  const handleSelectPharmacy = useCallback((pharmacy: Pharmacy | null) => {
     setSelectedPharmacy(pharmacy)
-    setMapCenter([pharmacy.lat, pharmacy.lng])
+    if (pharmacy) {
+      setMapCenter([pharmacy.lat, pharmacy.lng])
+      // On mobile, if a pharmacy was chosen from expanded sheet, collapse to partial to show map route
+      setMobileSheetState('partial')
+    }
   }, [])
 
-  // Mobile Layout
-  if (isMobile) {
-    return (
-      <div className="relative h-[100dvh] w-full overflow-hidden bg-background flex flex-col">
-        {/* Mobile Header */}
-        <div className="absolute top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b">
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="bg-primary text-primary-foreground p-1.5 rounded-lg shadow-sm">
-                <HeartPulse className="h-4 w-4" strokeWidth={2.5} />
-              </div>
-              <span className="font-heading font-black text-foreground tracking-tighter text-lg">FarmaYa AR</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <JujuyDevLinks />
-              <Feedback inline />
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-
-        <>
-            {/* Floating Search Bar */}
-            <div className="absolute top-[56px] left-0 right-0 z-40 p-3 pb-2">
-              <SearchControls
-                radius={radius}
-                onRadiusChange={setRadius}
-                onUseMyLocation={handleUseMyLocation}
-                isLocating={isLocating}
-                searchMode={searchMode}
-                onSearchModeChange={handleSearchModeChange}
-                selectedCity={selectedCity}
-                onCityChange={setSelectedCity}
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                cities={JUJUY_CITIES}
-                className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-border/50"
-              />
-            </div>
-
-            {/* Full Screen Map */}
-            <div className="absolute inset-0 z-0">
-              <PharmacyMap
-                pharmacies={filteredPharmacies}
-                center={mapCenter}
-                selectedPharmacy={selectedPharmacy}
-                onSelectPharmacy={handleSelectPharmacy}
-                userLocation={isLocating ? null : userLocation}
-                fitToPharmacies={searchMode === 'locality'}
-                travelMode={travelMode}
-                onTravelModeChange={setTravelMode}
-              />
-            </div>
-
-            {/* Bottom Sheet with Pharmacy List */}
-            <BottomSheet isOpen={isBottomSheetOpen} onOpenChange={setIsBottomSheetOpen}>
-              <PharmacyList
-                pharmacies={filteredPharmacies}
-                selectedPharmacy={selectedPharmacy}
-                userLocation={userLocation}
-                onSelectPharmacy={handleSelectPharmacy}
-                isLoading={isLoading}
-                viewMode="map"
-              />
-            </BottomSheet>
-
-        </>
-      </div>
-    )
-  }
-
-  // Desktop Layout
   return (
     <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background">
-      {/* Top Navbar */}
-      <header className="h-16 border-b bg-card shadow-sm z-50 flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary text-primary-foreground p-1.5 rounded-lg shadow-md ring-4 ring-primary/5">
-            <HeartPulse className="h-5 w-5" strokeWidth={2.5} />
+      {/* Top Navbar (Responsive for Mobile & Desktop) */}
+      <header className="h-14 border-b bg-card/95 backdrop-blur-md shadow-sm z-50 flex items-center justify-between px-3 sm:px-6 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="bg-primary text-primary-foreground p-1.5 rounded-lg shadow-md ring-4 ring-primary/5 shrink-0">
+            <HeartPulse className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-lg font-heading font-black text-foreground tracking-tighter leading-tight">FarmaYa AR</h1>
-          </div>
+          <h1 className="text-base sm:text-lg font-heading font-black text-foreground tracking-tighter leading-tight truncate">
+            FarmaYa AR
+          </h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <JujuyDevLinks />
-            <Feedback inline />
-            <ThemeToggle />
-          </div>
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <JujuyDevLinks />
+          <Feedback inline />
+          <ThemeToggle />
         </div>
       </header>
 
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden relative">
-        {/* Search & List Panel (Desktop) */}
-        <div className="flex w-[380px] flex-col border-r bg-card/50 backdrop-blur-sm z-40 shadow-xl">
+        {/* Desktop Sidebar: hidden on mobile (< md) */}
+        <div className="hidden md:flex w-[380px] flex-col border-r bg-card/50 backdrop-blur-sm z-40 shadow-xl shrink-0">
           {/* Search Controls Container */}
-          <div className="p-4 border-b bg-muted/20">
+          <div className="p-4 border-b bg-muted/20 space-y-3">
             <SearchControls
               radius={radius}
               onRadiusChange={setRadius}
@@ -293,19 +218,19 @@ export function PharmacyFinder() {
 
           {/* Pharmacy List Container */}
           <div className="flex-1 overflow-hidden">
-              <PharmacyList
-                pharmacies={filteredPharmacies}
-                selectedPharmacy={selectedPharmacy}
-                userLocation={userLocation}
-                onSelectPharmacy={handleSelectPharmacy}
-                isLoading={isLoading}
-                viewMode="map"
-              />
+            <PharmacyList
+              pharmacies={filteredPharmacies}
+              selectedPharmacy={selectedPharmacy}
+              userLocation={userLocation}
+              onSelectPharmacy={handleSelectPharmacy}
+              isLoading={isLoading}
+              viewMode="map"
+            />
           </div>
         </div>
 
-        {/* Map Panel (Desktop) */}
-        <div className="flex-1 relative z-0">
+        {/* Map Panel (Mobile & Desktop) */}
+        <div className="flex-1 relative z-0 w-full h-full">
           <PharmacyMap
             pharmacies={filteredPharmacies}
             center={mapCenter}
@@ -316,9 +241,152 @@ export function PharmacyFinder() {
             travelMode={travelMode}
             onTravelModeChange={setTravelMode}
           />
+
+          {/* Mobile-Only Overlays & Controls: hidden on md+ */}
+          <div className="md:hidden">
+            {/* Top Compact Search Pill */}
+            <div className="absolute top-3 inset-x-3 z-30 pointer-events-auto">
+              <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md rounded-2xl p-2 shadow-lg border border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setIsFilterModalOpen(true)}
+                  className="flex items-center gap-2.5 flex-1 text-left min-w-0 px-2 py-1 rounded-xl hover:bg-muted/50 transition-colors"
+                >
+                  <div className="p-1.5 bg-primary/10 text-primary rounded-full shrink-0">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground leading-tight truncate">
+                      {searchMode === 'nearby'
+                        ? (userLocation ? 'Cerca de mi ubicación' : 'Buscar por radio')
+                        : (selectedCity || 'Todas las localidades')}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-medium truncate">
+                      {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-[10px] font-bold text-foreground shrink-0 border border-border/50">
+                    <SlidersHorizontal className="h-3 w-3 text-primary" />
+                    <span>Filtros</span>
+                  </div>
+                </button>
+
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 shrink-0 rounded-xl bg-background"
+                  onClick={handleUseMyLocation}
+                  disabled={isLocating}
+                  title="Usar mi ubicación actual"
+                >
+                  <Crosshair className={cn("h-4 w-4 text-primary", isLocating && "animate-spin")} />
+                </Button>
+              </div>
+            </div>
+
+            {/* Mobile Filter Modal */}
+            <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+              <DialogContent className="sm:max-w-md max-h-[85dvh] overflow-y-auto p-5">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base font-bold flex items-center gap-2">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                    Buscar y filtrar farmacias
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <SearchControls
+                    radius={radius}
+                    onRadiusChange={setRadius}
+                    onUseMyLocation={() => {
+                      handleUseMyLocation()
+                      setIsFilterModalOpen(false)
+                    }}
+                    isLocating={isLocating}
+                    searchMode={searchMode}
+                    onSearchModeChange={handleSearchModeChange}
+                    selectedCity={selectedCity}
+                    onCityChange={setSelectedCity}
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
+                    cities={JUJUY_CITIES}
+                  />
+
+                  <Button
+                    className="w-full h-11 text-xs font-black uppercase tracking-wider shadow-md mt-2"
+                    onClick={() => setIsFilterModalOpen(false)}
+                  >
+                    Ver {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Floating Quick GPS Button on Map */}
+            <div className="absolute right-3.5 bottom-24 z-30 flex flex-col gap-2 pointer-events-auto">
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-10 w-10 rounded-full shadow-lg border border-border/80 bg-card/95 backdrop-blur hover:bg-card text-primary active:scale-95 transition-all"
+                onClick={handleUseMyLocation}
+                disabled={isLocating}
+                aria-label="Centrar en mi ubicación"
+              >
+                <Crosshair className={cn("h-4.5 w-4.5", isLocating && "animate-spin")} />
+              </Button>
+            </div>
+
+            {/* Floating Center Map/List Toggle Pill */}
+            <div className="absolute bottom-[76px] inset-x-0 z-30 flex justify-center pointer-events-none">
+              <Button
+                size="sm"
+                className="pointer-events-auto rounded-full shadow-xl bg-foreground text-background font-bold text-xs px-4 h-9 gap-1.5 hover:bg-foreground/90 transition-transform active:scale-95"
+                onClick={() => setMobileSheetState((prev) => (prev === 'collapsed' ? 'expanded' : 'collapsed'))}
+              >
+                {mobileSheetState === 'collapsed' ? (
+                  <>
+                    <List className="h-3.5 w-3.5" />
+                    <span>Ver lista ({filteredPharmacies.length})</span>
+                  </>
+                ) : (
+                  <>
+                    <MapIcon className="h-3.5 w-3.5" />
+                    <span>Ver mapa</span>
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Mobile Bottom Sheet for Pharmacy List */}
+            <BottomSheet
+              isOpen={true}
+              sheetState={mobileSheetState}
+              onStateChange={setMobileSheetState}
+              peekTitle={
+                <div className="flex items-center justify-between w-full pr-1">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    <span className="font-heading font-black text-xs text-foreground uppercase tracking-tight">
+                      {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia de turno' : 'farmacias de turno'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    {mobileSheetState === 'expanded' ? 'Ver mapa' : 'Ver lista'}
+                  </span>
+                </div>
+              }
+            >
+              <PharmacyList
+                pharmacies={filteredPharmacies}
+                selectedPharmacy={selectedPharmacy}
+                userLocation={userLocation}
+                onSelectPharmacy={handleSelectPharmacy}
+                isLoading={isLoading}
+                viewMode="map"
+              />
+            </BottomSheet>
+          </div>
         </div>
       </main>
-
     </div>
   )
 }

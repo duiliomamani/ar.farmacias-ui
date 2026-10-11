@@ -132,7 +132,7 @@ export function SuggestCityModal({ variant = 'default' }: SuggestCityModalProps)
 
           <div className="space-y-2">
             <Label htmlFor="province" className="font-semibold">Province *</Label>
-            <Select value={province} onValueChange={setProvince} required>
+            <Select value={province} onValueChange={(val) => setProvince(val ?? '')} required>
               <SelectTrigger id="province">
                 <SelectValue placeholder="Select province" />
               </SelectTrigger>

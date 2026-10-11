@@ -34,6 +34,7 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
 
   const isHighActivity = pharmacy.activityLevel > 70;
   const isPermanent = pharmacy.isPermanentlyOnDuty === true;
+  const isVoluntary = pharmacy.isVoluntary === true;
 
   const latestReport = pharmacy.communityReports?.[0];
   let confidenceBadge = null;
@@ -68,6 +69,7 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
         isSelected ? "ring-1 ring-primary ring-offset-1" : "hover:bg-card/50",
         pharmacy.isOnDuty
           ? isPermanent ? "border-l-sky-500 bg-sky-500/5" : "border-l-primary bg-primary/5"
+          : isVoluntary ? "border-l-blue-500 bg-blue-500/5"
           : "border-l-muted-foreground/20"
       )}
       onClick={() => onSelect?.(pharmacy)}
@@ -85,12 +87,14 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
                 <Badge
                   className={cn(
                     'text-[9px] font-black uppercase tracking-widest px-1.5 py-0 shadow-sm h-4',
-                    pharmacy.isOnDuty
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
+                    isVoluntary
+                      ? 'bg-blue-600 text-white'
+                      : pharmacy.isOnDuty
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
                   )}
                 >
-                  {pharmacy.isOnDuty ? 'De Turno' : 'Cerrada'}
+                  {isVoluntary ? 'Voluntaria' : pharmacy.isOnDuty ? 'De Turno' : 'Cerrada'}
                 </Badge>
                 {isPermanent && (
                   <Badge className="h-4 gap-1 border border-sky-500/30 bg-sky-500/10 px-1.5 py-0 text-[9px] font-black uppercase tracking-widest text-sky-700 dark:text-sky-300">
@@ -106,6 +110,12 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
               {pharmacy.distance?.toFixed(1)} km
             </div>
           </div>
+
+          {isVoluntary && (
+            <p className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[9px] font-bold text-blue-700 dark:text-blue-300">
+              Atención no garantizada. Recomendamos llamar antes de ir.
+            </p>
+          )}
 
           {/* Compact details: full values appear on demand in tooltips. */}
           <div className="flex items-center gap-1.5 text-muted-foreground">

@@ -28,6 +28,7 @@ function mapBackendPharmacy(item: any): Pharmacy {
     dutyUntil: item.dutyUntil,
     dutyFrom: item.dutyFrom,
     isPermanentlyOnDuty: item.isPermanentlyOnDuty,
+    isVoluntary: item.isVoluntary,
     distance: item.distance ? item.distance / 1000 : 0, 
     veracityScore: item.veracityScore || 100,
     city: item.city,
