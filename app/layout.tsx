@@ -60,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background" suppressHydrationWarning>
+    <html lang="es" className="bg-background" suppressHydrationWarning>
       <body className={`${openSans.variable} ${poppins.variable} font-sans antialiased`}>
         <Providers>
           <ThemeProvider

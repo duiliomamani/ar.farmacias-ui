@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Navigation, MapPin, Share2, Flame, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react'
+import { Navigation, MapPin, Share2, Flame, ThumbsUp, ThumbsDown, Loader2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,11 +24,8 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
   const { isAuthenticated } = useAuth()
   const [isReporting, setIsReporting] = useState(false)
 
-  const handleNavigate = () => {
-    const origin = userLocation ? `${userLocation[0]},${userLocation[1]}` : ''
-    const destination = `${pharmacy.lat},${pharmacy.lng}`
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`
-    window.open(url, '_blank')
+  const handleShowRoute = () => {
+    onSelect?.(pharmacy)
   }
 
   const handleShare = () => {
@@ -36,6 +33,11 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
     const text = `Farmacia de Turno: ${pharmacy.name}\nDirección: ${pharmacy.address}\n\nVer en Google Maps: ${mapsUrl}`
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`
     window.open(url, '_blank')
+  }
+
+  const handleStreetView = () => {
+    const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${pharmacy.lat},${pharmacy.lng}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const handleQuickReport = async (isOnDuty: boolean) => {
@@ -175,11 +177,11 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
               className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-[10px] uppercase tracking-widest h-8 shadow-sm"
               onClick={(e) => {
                 e.stopPropagation()
-                handleNavigate()
+                handleShowRoute()
               }}
             >
               <Navigation className="mr-1.5 h-3 w-3" strokeWidth={3} />
-              Navegar
+              Cómo llegar
             </Button>
 
             <Button
@@ -191,6 +193,17 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
               }}
             >
               <Share2 className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              aria-label="Ver ubicación en Street View"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleStreetView()
+              }}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
             </Button>
           </div>
           

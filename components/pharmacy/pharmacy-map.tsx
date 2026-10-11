@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
-import { Navigation, CheckCircle2, AlertTriangle, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { Navigation, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 
 // Dynamically import react-leaflet components to avoid SSR issues
 const MapContainer = dynamic(
@@ -26,6 +27,87 @@ const Popup = dynamic(
   () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
 )
+const LayersControl = dynamic(
+  () => import('react-leaflet').then((mod) => mod.LayersControl),
+  { ssr: false }
+)
+const BaseLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.LayersControl.BaseLayer),
+  { ssr: false }
+)
+
+function RoutingControl({
+  origin,
+  destination,
+  onSummary,
+}: {
+  origin: [number, number]
+  destination: [number, number]
+  onSummary: (summary: { distanceKm: number; durationMinutes: number }) => void
+}) {
+  // Leaflet Routing Machine is browser-only and augments the Leaflet namespace.
+  const map = require('react-leaflet').useMap()
+
+  useEffect(() => {
+    const L = require('leaflet')
+    require('leaflet-routing-machine')
+    const routingControl = L.Routing.control({
+      waypoints: [L.latLng(origin[0], origin[1]), L.latLng(destination[0], destination[1])],
+      router: L.Routing.osrmv1({
+        serviceUrl: 'https://router.project-osrm.org/route/v1',
+      }),
+      lineOptions: {
+        styles: [{ color: '#16a34a', opacity: 0.9, weight: 6 }],
+      },
+      addWaypoints: false,
+      draggableWaypoints: false,
+      fitSelectedRoutes: false,
+      show: false,
+      createMarker: () => null,
+    }).addTo(map)
+
+    let isActive = true
+    const handleRoutesFound = (event: any) => {
+      if (!isActive) return
+      const summary = event.routes?.[0]?.summary
+      if (summary) {
+        onSummary({
+          distanceKm: summary.totalDistance / 1000,
+          durationMinutes: Math.max(1, Math.round(summary.totalTime / 60)),
+        })
+      }
+    }
+
+    routingControl.on('routesfound', handleRoutesFound)
+
+    return () => {
+      isActive = false
+      routingControl.off('routesfound', handleRoutesFound)
+
+      // Routing Machine may finish an async OSRM request while React is
+      // already unmounting/replacing the map. Invalidate that request before
+      // removing the control to avoid Leaflet trying to remove a null layer.
+      const control = routingControl as any
+      control._requestCount = (control._requestCount || 0) + 1
+      if (control._pendingRequest?.abort) {
+        control._pendingRequest.abort()
+        control._pendingRequest = null
+      }
+
+      try {
+        if ((map as any)._container) {
+          map.removeControl(routingControl)
+        }
+      } catch (error) {
+        // Leaflet can already have removed the routing layers during a
+        // concurrent map unmount. At that point there is nothing left to do.
+        console.debug('[PharmacyMap] Routing cleanup skipped', error)
+      }
+    }
+  }, [map, origin[0], origin[1], destination[0], destination[1], onSummary])
+
+  return null
+}
 
 interface PharmacyMapProps {
   pharmacies: Pharmacy[]
@@ -45,12 +127,48 @@ function PharmacyMapContent({
   className,
 }: PharmacyMapProps) {
   const mapRef = useRef<L.Map | null>(null)
+  const [routeSummary, setRouteSummary] = useState<{ distanceKm: number; durationMinutes: number } | null>(null)
+
+  // Some official records share the same geocoded point. Keep their real
+  // coordinates for routing, but fan the visual markers out so none is hidden.
+  const displayPositions = useMemo(() => {
+    const groups = new Map<string, Pharmacy[]>()
+    pharmacies.forEach((pharmacy) => {
+      const key = `${pharmacy.lat.toFixed(5)}-${pharmacy.lng.toFixed(5)}`
+      const group = groups.get(key) || []
+      group.push(pharmacy)
+      groups.set(key, group)
+    })
+
+    const positions = new Map<string, [number, number]>()
+    groups.forEach((group) => {
+      group.forEach((pharmacy, index) => {
+        if (group.length === 1) {
+          positions.set(pharmacy.id, [pharmacy.lat, pharmacy.lng])
+          return
+        }
+
+        const angle = (2 * Math.PI * index) / group.length
+        const offset = 0.00022
+        positions.set(pharmacy.id, [
+          pharmacy.lat + Math.sin(angle) * offset,
+          pharmacy.lng + Math.cos(angle) * offset,
+        ])
+      })
+    })
+
+    return positions
+  }, [pharmacies])
 
   useEffect(() => {
     if (mapRef.current && selectedPharmacy) {
       mapRef.current.setView([selectedPharmacy.lat, selectedPharmacy.lng], 16)
     }
   }, [selectedPharmacy])
+
+  useEffect(() => {
+    setRouteSummary(null)
+  }, [selectedPharmacy?.id, userLocation?.[0], userLocation?.[1]])
 
   // Update map center when the center prop changes (e.g., from geolocation)
   useEffect(() => {
@@ -200,6 +318,11 @@ function PharmacyMapContent({
     window.open(url, '_blank')
   }
 
+  const handleStreetView = (pharmacy: Pharmacy) => {
+    const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${pharmacy.lat},${pharmacy.lng}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className={cn('relative w-full h-full bg-muted', className)}>
       <MapContainer
@@ -211,10 +334,30 @@ function PharmacyMapContent({
         className="w-full h-full z-0"
         zoomControl={false}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <LayersControl position="topright">
+          <BaseLayer checked name="Google calles">
+            <TileLayer
+              attribution='&copy; Google Maps'
+              url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+              maxZoom={20}
+            />
+          </BaseLayer>
+          <BaseLayer name="OpenStreetMap">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maxZoom={19}
+            />
+          </BaseLayer>
+        </LayersControl>
+
+        {userLocation && selectedPharmacy && (
+          <RoutingControl
+            origin={userLocation}
+            destination={[selectedPharmacy.lat, selectedPharmacy.lng]}
+            onSummary={setRouteSummary}
+          />
+        )}
 
         {userLocation && (
           <Marker position={userLocation} icon={createUserLocationIcon()} zIndexOffset={1000} />
@@ -223,7 +366,7 @@ function PharmacyMapContent({
         {pharmacies.map((pharmacy) => (
           <Marker
             key={pharmacy.id}
-            position={[pharmacy.lat, pharmacy.lng]}
+            position={displayPositions.get(pharmacy.id) || [pharmacy.lat, pharmacy.lng]}
             icon={createCustomIcon(pharmacy, selectedPharmacy?.id === pharmacy.id)}
             eventHandlers={{
               click: () => onSelectPharmacy?.(pharmacy),
@@ -322,12 +465,30 @@ function PharmacyMapContent({
                     <Navigation className="h-3.5 w-3.5" strokeWidth={3} />
                     Navegar
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-[10px] font-black uppercase tracking-widest h-9 gap-2"
+                    onClick={() => handleStreetView(pharmacy)}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Ver calle
+                  </Button>
                 </div>
               </div>
             </Popup>
           </Marker>
         ))}
       </MapContainer>
+      {routeSummary && selectedPharmacy && (
+        <div className="absolute right-4 top-4 z-[500] rounded-xl border bg-card/95 px-4 py-3 shadow-xl backdrop-blur">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ruta hasta {selectedPharmacy.name}</p>
+          <p className="mt-1 text-sm font-bold text-foreground">
+            {routeSummary.durationMinutes} min · {routeSummary.distanceKm.toFixed(1)} km
+          </p>
+          <p className="text-[10px] text-muted-foreground">Estimación en auto</p>
+        </div>
+      )}
     </div>
   )
 }

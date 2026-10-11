@@ -90,8 +90,6 @@ graph TD
 
 2. **Instalar dependencias:**
    ```bash
-   npm install
-   # o
    pnpm install
    ```
 
@@ -103,7 +101,7 @@ graph TD
 
 4. **Iniciar el servidor de desarrollo:**
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 ## 📂 Estructura del Proyecto

@@ -42,7 +42,10 @@ export function groupPharmacies(pharmacies: Pharmacy[]): Pharmacy[] {
   const pharmacyMap = new Map<string, Pharmacy>();
 
   pharmacies.forEach((pharmacy) => {
-    const key = `${pharmacy.lat.toFixed(5)}-${pharmacy.lng.toFixed(5)}`;
+    // Different pharmacies can legitimately share the same coordinates
+    // (the official source currently does this for some permanent pharmacies).
+    // Coordinates are not a stable identity; use the backend id instead.
+    const key = pharmacy.id || `${pharmacy.name}-${pharmacy.city || ''}`;
     
     if (!pharmacyMap.has(key)) {
       // If it's the first time we see this pharmacy, initialize it with an empty shifts array
