@@ -1,11 +1,11 @@
-import { ApiService } from '../api-service';
+import { BffClient } from '../bff-client';
 
 export class HealthService {
   /**
    * GET /ping - Health check endpoint (sin autenticación)
    */
   static async ping(): Promise<any> {
-    return ApiService.request<any>('/ping', { skipAuth: true });
+    return BffClient.get<any>('/api/health');
   }
 }
 

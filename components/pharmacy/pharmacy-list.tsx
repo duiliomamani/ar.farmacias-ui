@@ -11,7 +11,6 @@ interface PharmacyListProps {
   selectedPharmacy?: Pharmacy | null
   userLocation?: [number, number] | null
   onSelectPharmacy?: (pharmacy: Pharmacy) => void
-  onReportOpen?: (pharmacy: Pharmacy) => void
   isLoading?: boolean
   viewMode?: 'map' | 'list'
 }
@@ -21,7 +20,6 @@ export function PharmacyList({
   selectedPharmacy,
   userLocation,
   onSelectPharmacy,
-  onReportOpen,
   isLoading,
   viewMode = 'map',
 }: PharmacyListProps) {
@@ -70,15 +68,26 @@ export function PharmacyList({
               ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
               : "flex flex-col space-y-4"
           )}>
-            {pharmacies.map((pharmacy) => (
-              <PharmacyCard
-                key={pharmacy.id}
-                pharmacy={pharmacy}
-                isSelected={selectedPharmacy?.id === pharmacy.id}
-                userLocation={userLocation}
-                onSelect={onSelectPharmacy}
-                onReportOpen={onReportOpen}
-              />
+            {[
+              { title: 'Farmacias permanentes', items: pharmacies.filter((pharmacy) => pharmacy.isPermanentlyOnDuty) },
+              { title: 'Turnos del día', items: pharmacies.filter((pharmacy) => !pharmacy.isPermanentlyOnDuty) },
+            ].map((section) => section.items.length > 0 && (
+              <div key={section.title} className={viewMode === 'list' ? 'contents' : 'space-y-2'}>
+                <div className="flex items-center gap-2 px-1 pt-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" /> {section.title} ({section.items.length})
+                </div>
+                <div className={cn(viewMode === 'list' ? 'contents' : 'flex flex-col space-y-4')}>
+                  {section.items.map((pharmacy) => (
+                    <PharmacyCard
+                      key={pharmacy.id}
+                      pharmacy={pharmacy}
+                      isSelected={selectedPharmacy?.id === pharmacy.id}
+                      userLocation={userLocation}
+                      onSelect={onSelectPharmacy}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

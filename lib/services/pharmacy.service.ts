@@ -1,12 +1,16 @@
 import type { Pharmacy } from '../pharmacy-data';
-import { ApiService } from '../api-service';
+import { BffClient } from '../bff-client';
 
-export interface ReportPayload {
-  pharmacyId: string;
-  isOnDuty: boolean;
-  lat: number;
-  lng: number;
-  deviceId: string;
+export interface ScrapingStatus {
+  status: 'running' | 'success' | 'failed'
+  startedAt: string
+  finishedAt?: string
+  recordsFound: number
+  recordsValidated: number
+  recordsSaved: number
+  staleRemoved: number
+  errorMessages: string[]
+  structureChanges: string[]
 }
 
 const formatISO = (dateStr?: string) => {
@@ -47,19 +51,20 @@ function mapBackendPharmacy(item: any): Pharmacy {
 export class PharmacyService {
   static async getNearby(lat: number, lng: number, radius = 5000, date?: string): Promise<Pharmacy[]> {
     const isoDate = formatISO(date);
-    const data = await ApiService.getAll<any[]>('/api/pharmacies/nearby', { lat, lng, radius, date: isoDate });
+    const data = await BffClient.get<any[]>('/api/pharmacies/nearby', { lat, lng, radius, date: isoDate });
     return data.map(mapBackendPharmacy);
   }
 
   static async getByDate(date: string, city?: string): Promise<Pharmacy[]> {
     const isoDate = formatISO(date);
-    const data = await ApiService.getAll<any[]>('/api/pharmacies/by-date', { date: isoDate, city });
+    const data = await BffClient.get<any[]>('/api/pharmacies/by-date', { date: isoDate, city });
     return data.map(mapBackendPharmacy);
   }
 
-  static async reportStatus(payload: ReportPayload): Promise<void> {
-    await ApiService.post('/api/pharmacies/report', payload);
+  static async getScrapingStatus(): Promise<ScrapingStatus | null> {
+    return BffClient.get<ScrapingStatus | null>('/api/scraping/turnos-jujuy/status');
   }
+
 }
 
 export default PharmacyService;

@@ -1,29 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { Navigation, MapPin, Share2, Flame, ThumbsUp, ThumbsDown, Loader2, ExternalLink } from 'lucide-react'
+import { Navigation, MapPin, Share2, Flame, ExternalLink, ShieldCheck, Clock3, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { Pharmacy } from '@/lib/pharmacy-data'
-import { cn, getDeviceId } from '@/lib/utils'
-import { useToast } from '@/hooks/use-toast'
-import { PharmacyService } from '@/lib/api'
-import { useAuth } from '@/components/auth/auth-context'
+import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface PharmacyCardProps {
   pharmacy: Pharmacy
   isSelected?: boolean
   userLocation?: [number, number] | null
   onSelect?: (pharmacy: Pharmacy) => void
-  onReportOpen?: (pharmacy: Pharmacy) => void
 }
 
 export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: PharmacyCardProps) {
-  const { toast } = useToast()
-  const { isAuthenticated } = useAuth()
-  const [isReporting, setIsReporting] = useState(false)
-
   const handleShowRoute = () => {
     onSelect?.(pharmacy)
   }
@@ -40,50 +32,8 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  const handleQuickReport = async (isOnDuty: boolean) => {
-    setIsReporting(true)
-    try {
-      const deviceId = getDeviceId()
-      
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        if (!navigator.geolocation) return reject(new Error('No geolocation'))
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
-      }).catch(() => null)
-
-      const lat = position ? position.coords.latitude : pharmacy.lat
-      const lng = position ? position.coords.longitude : pharmacy.lng
-
-      await PharmacyService.reportStatus({
-        pharmacyId: pharmacy.id,
-        isOnDuty,
-        lat,
-        lng,
-        deviceId,
-      })
-      toast({ 
-        title: "¡Gracias por tu aporte!", 
-        description: "El estado ha sido actualizado para ayudar a la comunidad." 
-      })
-    } catch (e: any) {
-      if (e?.statusCode === 429 || e?.message?.includes('429')) {
-        toast({ 
-          title: "Demasiados intentos", 
-          description: "Por favor, espera unos minutos antes de enviar otro reporte.", 
-          variant: "destructive" 
-        })
-      } else {
-        toast({ 
-          title: "Error", 
-          description: "No se pudo enviar el reporte. Inténtalo más tarde.", 
-          variant: "destructive" 
-        })
-      }
-    } finally {
-      setIsReporting(false)
-    }
-  }
-
   const isHighActivity = pharmacy.activityLevel > 70;
+  const isPermanent = pharmacy.isPermanentlyOnDuty === true;
 
   const latestReport = pharmacy.communityReports?.[0];
   let confidenceBadge = null;
@@ -114,16 +64,16 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all duration-300 hover:shadow-lg border-l-4 overflow-hidden group relative flex flex-col",
+        "cursor-pointer transition-all duration-300 hover:shadow-lg border-l-4 overflow-hidden group relative gap-2 py-2",
         isSelected ? "ring-1 ring-primary ring-offset-1" : "hover:bg-card/50",
         pharmacy.isOnDuty
-          ? "border-l-primary bg-primary/5"
+          ? isPermanent ? "border-l-sky-500 bg-sky-500/5" : "border-l-primary bg-primary/5"
           : "border-l-muted-foreground/20"
       )}
       onClick={() => onSelect?.(pharmacy)}
     >
-      <CardContent className="p-3 flex flex-col flex-1">
-        <div className="flex flex-col gap-1.5 flex-1">
+      <CardContent className="p-2.5">
+        <div className="flex flex-col gap-1.5">
           {/* Header Area */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex flex-col gap-0.5 flex-1">
@@ -142,6 +92,11 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
                 >
                   {pharmacy.isOnDuty ? 'De Turno' : 'Cerrada'}
                 </Badge>
+                {isPermanent && (
+                  <Badge className="h-4 gap-1 border border-sky-500/30 bg-sky-500/10 px-1.5 py-0 text-[9px] font-black uppercase tracking-widest text-sky-700 dark:text-sky-300">
+                    <ShieldCheck className="h-2.5 w-2.5" /> Permanente
+                  </Badge>
+                )}
                 {isHighActivity && (
                   <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
                 )}
@@ -152,29 +107,47 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
             </div>
           </div>
 
-          {/* Prominent Opening Hours */}
-          {pharmacy.openingHours && (
-            <div className="text-[9px] font-bold text-primary/80 uppercase tracking-widest mt-0.5">
-              {pharmacy.openingHours}
-            </div>
-          )}
-
-          {/* Address */}
-          <div className="flex items-center gap-1.5 text-[10px] text-foreground/80 mt-0.5">
-            <MapPin className="h-3 w-3 shrink-0 text-primary" strokeWidth={2.5} />
-            <span className="font-medium truncate">{pharmacy.address}</span>
+          {/* Compact details: full values appear on demand in tooltips. */}
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            {pharmacy.openingHours && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" onClick={(event) => event.stopPropagation()} className={cn("rounded-md p-1 hover:bg-muted", isPermanent ? "text-sky-600 dark:text-sky-300" : "text-primary/80")} aria-label="Ver horario">
+                    <Clock3 className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Horario: {pharmacy.openingHours}</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" onClick={(event) => event.stopPropagation()} className="rounded-md p-1 text-primary hover:bg-muted" aria-label="Ver dirección">
+                  <MapPin className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Dirección: {pharmacy.address}</TooltipContent>
+            </Tooltip>
+            {pharmacy.phone && pharmacy.phone !== 'Sin teléfono' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a href={`tel:${pharmacy.phone}`} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-primary" aria-label="Llamar a la farmacia" onClick={(event) => event.stopPropagation()}>
+                    <Phone className="h-3.5 w-3.5" />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent>Teléfono: {pharmacy.phone}</TooltipContent>
+              </Tooltip>
+            )}
+            <span className="text-[10px] text-muted-foreground">Más información</span>
           </div>
 
           {/* Confidence Badge */}
           {confidenceBadge}
 
-          <div className="flex-1" />
-
           {/* Action Row */}
-          <div className="flex items-center gap-1.5 pt-1">
+          <div className="flex items-center gap-1.5 pt-0.5">
             <Button
               variant="default"
-              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-[10px] uppercase tracking-widest h-8 shadow-sm"
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-[10px] uppercase tracking-widest h-7 shadow-sm"
               onClick={(e) => {
                 e.stopPropagation()
                 handleShowRoute()
@@ -186,7 +159,7 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
 
             <Button
               variant="outline"
-              className="w-8 h-8 p-0 border-green-500/20 hover:border-green-500/50 hover:bg-green-500/5 text-green-600"
+              className="w-7 h-7 p-0 border-green-500/20 hover:border-green-500/50 hover:bg-green-500/5 text-green-600"
               onClick={(e) => {
                 e.stopPropagation()
                 handleShare()
@@ -196,7 +169,7 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
             </Button>
             <Button
               variant="outline"
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 p-0"
               aria-label="Ver ubicación en Street View"
               onClick={(e) => {
                 e.stopPropagation()
@@ -207,32 +180,6 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
             </Button>
           </div>
           
-          {/* Quick Feedback Section */}
-          {isAuthenticated && (
-            <div className="flex flex-col gap-1 mt-1.5 pt-1.5 border-t border-border/60">
-               <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">¿Está abierta?</span>
-               <div className="flex items-center gap-1.5">
-                 <Button 
-                   size="sm" 
-                   variant="outline" 
-                   className="flex-1 h-7 text-[9px] gap-1 bg-green-50/50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 font-bold uppercase"
-                   disabled={isReporting}
-                   onClick={(e) => { e.stopPropagation(); handleQuickReport(true); }}
-                 >
-                    {isReporting ? <Loader2 className="w-2.5 h-2.5 animate-spin"/> : <ThumbsUp className="w-2.5 h-2.5"/>} Sí, está abierta
-                 </Button>
-                 <Button 
-                   size="sm" 
-                   variant="outline" 
-                   className="flex-1 h-7 text-[9px] gap-1 bg-red-50/50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 font-bold uppercase"
-                   disabled={isReporting}
-                   onClick={(e) => { e.stopPropagation(); handleQuickReport(false); }}
-                 >
-                    {isReporting ? <Loader2 className="w-2.5 h-2.5 animate-spin"/> : <ThumbsDown className="w-2.5 h-2.5"/>} No, está cerrada
-                 </Button>
-               </div>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

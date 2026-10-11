@@ -1,12 +1,12 @@
 'use client'
-import { Crosshair, Search, MapPin, Pill, Clock } from 'lucide-react'
+import { CalendarDays, Crosshair, MapPin, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { SuggestCityModal } from './suggest-city-modal'
 
 interface SearchControlsProps {
   searchQuery: string
@@ -15,6 +15,13 @@ interface SearchControlsProps {
   onRadiusChange: (value: number) => void
   onUseMyLocation: () => void
   isLocating: boolean
+  searchMode: 'nearby' | 'locality'
+  onSearchModeChange: (value: 'nearby' | 'locality') => void
+  selectedCity: string
+  onCityChange: (value: string) => void
+  selectedDate: string
+  onDateChange: (value: string) => void
+  cities: string[]
   className?: string
 }
 
@@ -23,6 +30,13 @@ export function SearchControls({
   onRadiusChange,
   onUseMyLocation,
   isLocating,
+  searchMode,
+  onSearchModeChange,
+  selectedCity,
+  onCityChange,
+  selectedDate,
+  onDateChange,
+  cities,
   className,
 }: Omit<SearchControlsProps, 'searchQuery' | 'onSearchChange'>) {
   return (
@@ -40,7 +54,46 @@ export function SearchControls({
             {isLocating ? "Obteniendo ubicación..." : "Usar mi ubicación actual"}
           </span>
         </Button>
-        <SuggestCityModal variant="compact" />
+      </div>
+
+      <div className="space-y-3 rounded-xl border border-border/50 bg-card/50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Search className="h-3.5 w-3.5 text-primary" />
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Buscar por localidad
+            </Label>
+          </div>
+          <Switch
+            checked={searchMode === 'locality'}
+            onCheckedChange={(checked) => onSearchModeChange(checked ? 'locality' : 'nearby')}
+            aria-label="Buscar por localidad"
+          />
+        </div>
+
+        {searchMode === 'locality' && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Select value={selectedCity || 'ALL'} onValueChange={(value) => onCityChange(value === 'ALL' ? '' : value)}>
+              <SelectTrigger className="w-full bg-background text-xs">
+                <SelectValue placeholder="Todas las localidades" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas las localidades</SelectItem>
+                {cities.map((city) => <SelectItem key={city} value={city}>{city}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => onDateChange(event.target.value)}
+                className="h-9 pl-9 text-xs"
+                aria-label="Fecha de turnos"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Radius Slider */}

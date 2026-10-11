@@ -4,11 +4,12 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { SearchControls } from './search-controls'
+import { ScraperMonitor } from './scraper-monitor'
 import { PharmacyList } from './pharmacy-list'
 import { BottomSheet } from './bottom-sheet'
-import { ContributeDataModal } from './contribute-data-modal'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { AuthButton } from '@/components/auth/auth-button'
+import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
+import { Feedback } from '@/components/feedback'
 import {
   groupPharmacies,
   filterPharmacies,
@@ -17,9 +18,25 @@ import {
 } from '@/lib/pharmacy-data'
 import { PharmacyService } from '@/lib/api'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { Pill, HeartPulse, Map as MapIcon, List } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn, getDeviceId, calculateDistance, getEffectiveDutyDate } from '@/lib/utils'
+import { Pill, HeartPulse } from 'lucide-react'
+import { getDeviceId, calculateDistance, getEffectiveDutyDate } from '@/lib/utils'
+import { toast } from 'sonner'
+
+const JUJUY_CITIES = [
+  'ABRA PAMPA', 'CALILEGUA', 'EL CARMEN', 'FRAILE PINTADO', 'HUMAHUACA',
+  'LA ESPERANZA', 'LA MENDIETA', 'LA QUIACA', 'LDOR. GRAL SAN MARTIN',
+  'MONTERRICO', 'PALPALA', 'PERICO', 'SAN PEDRO DE JUJUY',
+  'SAN SALVADOR DE JUJUY', 'TILCARA', 'YUTO',
+]
+
+const dateInputValue = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+type TravelMode = 'driving' | 'walking' | 'cycling'
 
 // Dynamically import the map to avoid SSR issues with Leaflet
 const PharmacyMap = dynamic(
@@ -44,10 +61,13 @@ export function PharmacyFinder() {
   const [radius, setRadius] = useState(5)
   const [isLocating, setIsLocating] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null)
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-34.6037, -58.3816])
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(true)
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
+  const [searchMode, setSearchMode] = useState<'nearby' | 'locality'>('nearby')
+  const [selectedCity, setSelectedCity] = useState('')
+  const [selectedDate, setSelectedDate] = useState(dateInputValue(getEffectiveDutyDate()))
+  const [travelMode, setTravelMode] = useState<TravelMode>('driving')
 
   // New Filter States
   const [onlyOnDuty, setOnlyOnDuty] = useState(true)
@@ -74,8 +94,17 @@ export function PharmacyFinder() {
           setIsLocating(false)
         },
         (error) => {
-          console.error('Error getting location:', error)
           setIsLocating(false)
+          const message = error.code === 1
+            ? 'Para mostrarte las farmacias más cercanas, habilitá el permiso desde el candado del navegador y probá otra vez.'
+            : error.code === 2
+              ? 'No pudimos detectar tu ubicación. Revisá que el GPS o los servicios de ubicación estén activos.'
+              : 'La ubicación tardó demasiado. Volvé a intentarlo cuando tengas una mejor señal.'
+
+          toast.error(error.code === 1 ? '¿Activamos tu ubicación?' : 'No encontramos tu ubicación', {
+            description: message,
+            action: { label: 'Intentar de nuevo', onClick: handleUseMyLocation },
+          })
         },
         {
           enableHighAccuracy: true,
@@ -85,15 +114,30 @@ export function PharmacyFinder() {
       )
     } else {
       setIsLocating(false)
+      toast.error('Ubicación no disponible', {
+        description: 'Tu navegador no permite obtener la ubicación. Podés buscar por localidad y fecha.',
+        action: { label: 'Intentar de nuevo', onClick: handleUseMyLocation },
+      })
+    }
+  }, [])
+
+  const handleSearchModeChange = useCallback((mode: 'nearby' | 'locality') => {
+    setSearchMode(mode)
+    if (mode === 'locality') {
+      setUserLocation(null)
+      setMapCenter([-24.1858, -65.2995])
     }
   }, [])
 
   // Data Fetching
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
-    queryKey: ['pharmacies', userLocation || mapCenter, radius, getEffectiveDutyDate().toDateString()],
+    queryKey: ['pharmacies', searchMode, userLocation || mapCenter, radius, selectedCity, selectedDate],
     queryFn: async () => {
+      const effectiveDate = new Date(`${selectedDate}T12:00:00`).toISOString()
+      if (searchMode === 'locality') {
+        return PharmacyService.getByDate(effectiveDate, selectedCity || undefined)
+      }
       const center = userLocation || mapCenter
-      const effectiveDate = getEffectiveDutyDate().toISOString()
       return PharmacyService.getNearby(center[0], center[1], radius * 1000, effectiveDate)
     },
     retry: false,
@@ -113,25 +157,22 @@ export function PharmacyFinder() {
 
   // Filter and sort pharmacies (local filtering for on-duty and radius)
   const filteredPharmacies = useMemo(() => {
-    let result = filterPharmacies(groupedPharmacies, radius);
+    let result = searchMode === 'locality'
+      ? groupedPharmacies
+      : filterPharmacies(groupedPharmacies, radius)
 
     if (onlyOnDuty) {
       result = result.filter(p => p.isOnDuty);
     }
 
     return sortPharmacies(result);
-  }, [groupedPharmacies, radius, onlyOnDuty]);
+  }, [groupedPharmacies, radius, onlyOnDuty, searchMode]);
 
   const isLoading = isDataLoading || isLocating
 
   const handleSelectPharmacy = useCallback((pharmacy: Pharmacy) => {
     setSelectedPharmacy(pharmacy)
     setMapCenter([pharmacy.lat, pharmacy.lng])
-  }, [])
-
-  const handleReportOpen = useCallback((pharmacy: Pharmacy) => {
-    setSelectedPharmacy(pharmacy)
-    console.log(`Reporting ${pharmacy.name} as open.`)
   }, [])
 
   // Mobile Layout
@@ -148,22 +189,14 @@ export function PharmacyFinder() {
               <span className="font-heading font-black text-foreground tracking-tighter text-lg">FarmaYa AR</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
-              >
-                {viewMode === 'map' ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
-              </Button>
-              <AuthButton />
+              <JujuyDevLinks />
+              <Feedback inline />
               <ThemeToggle />
             </div>
           </div>
         </div>
 
-        {viewMode === 'map' ? (
-          <>
+        <>
             {/* Floating Search Bar */}
             <div className="absolute top-[56px] left-0 right-0 z-40 p-3 pb-2">
               <SearchControls
@@ -171,6 +204,13 @@ export function PharmacyFinder() {
                 onRadiusChange={setRadius}
                 onUseMyLocation={handleUseMyLocation}
                 isLocating={isLocating}
+                searchMode={searchMode}
+                onSearchModeChange={handleSearchModeChange}
+                selectedCity={selectedCity}
+                onCityChange={setSelectedCity}
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+                cities={JUJUY_CITIES}
                 className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-border/50"
               />
             </div>
@@ -183,6 +223,9 @@ export function PharmacyFinder() {
                 selectedPharmacy={selectedPharmacy}
                 onSelectPharmacy={handleSelectPharmacy}
                 userLocation={isLocating ? null : userLocation}
+                fitToPharmacies={searchMode === 'locality'}
+                travelMode={travelMode}
+                onTravelModeChange={setTravelMode}
               />
             </div>
 
@@ -193,38 +236,12 @@ export function PharmacyFinder() {
                 selectedPharmacy={selectedPharmacy}
                 userLocation={userLocation}
                 onSelectPharmacy={handleSelectPharmacy}
-                onReportOpen={handleReportOpen}
                 isLoading={isLoading}
                 viewMode="map"
               />
             </BottomSheet>
 
-            {/* Floating Action Button */}
-            <ContributeDataModal selectedPharmacy={selectedPharmacy} />
-          </>
-        ) : (
-          <div className="pt-[56px] h-full flex flex-col bg-background relative z-10">
-            <div className="p-4 border-b bg-card">
-              <SearchControls
-                radius={radius}
-                onRadiusChange={setRadius}
-                onUseMyLocation={handleUseMyLocation}
-                isLocating={isLocating}
-              />
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <PharmacyList
-                pharmacies={filteredPharmacies}
-                selectedPharmacy={selectedPharmacy}
-                userLocation={userLocation}
-                onSelectPharmacy={handleSelectPharmacy}
-                onReportOpen={handleReportOpen}
-                isLoading={isLoading}
-                viewMode="list"
-              />
-            </div>
-          </div>
-        )}
+        </>
       </div>
     )
   }
@@ -244,31 +261,9 @@ export function PharmacyFinder() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="bg-muted/50 rounded-lg p-1 flex items-center shadow-inner border">
-            <Button
-              variant={viewMode === 'map' ? 'default' : 'ghost'}
-              size="sm"
-              className={cn("h-8 px-4 gap-2 text-xs font-bold transition-all", viewMode === 'map' && "shadow-sm")}
-              onClick={() => setViewMode('map')}
-            >
-              <MapIcon className="h-3.5 w-3.5" />
-              Mapa
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              className={cn("h-8 px-4 gap-2 text-xs font-bold transition-all", viewMode === 'list' && "shadow-sm")}
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-3.5 w-3.5" />
-              Lista
-            </Button>
-          </div>
-
-          <div className="h-8 w-px bg-border mx-2" />
-
           <div className="flex items-center gap-2">
-            <AuthButton />
+            <JujuyDevLinks />
+            <Feedback inline />
             <ThemeToggle />
           </div>
         </div>
@@ -277,10 +272,7 @@ export function PharmacyFinder() {
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden relative">
         {/* Search & List Panel (Desktop) */}
-        <div className={cn(
-          "flex flex-col border-r bg-card/50 backdrop-blur-sm z-40 transition-all duration-500 ease-in-out shadow-xl",
-          viewMode === 'map' ? "w-[380px]" : "w-full"
-        )}>
+        <div className="flex w-[380px] flex-col border-r bg-card/50 backdrop-blur-sm z-40 shadow-xl">
           {/* Search Controls Container */}
           <div className="p-4 border-b bg-muted/20">
             <SearchControls
@@ -288,7 +280,15 @@ export function PharmacyFinder() {
               onRadiusChange={setRadius}
               onUseMyLocation={handleUseMyLocation}
               isLocating={isLocating}
+              searchMode={searchMode}
+              onSearchModeChange={handleSearchModeChange}
+              selectedCity={selectedCity}
+              onCityChange={setSelectedCity}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              cities={JUJUY_CITIES}
             />
+            <div className="mt-3"><ScraperMonitor /></div>
           </div>
 
           {/* Pharmacy List Container */}
@@ -298,29 +298,27 @@ export function PharmacyFinder() {
                 selectedPharmacy={selectedPharmacy}
                 userLocation={userLocation}
                 onSelectPharmacy={handleSelectPharmacy}
-                onReportOpen={handleReportOpen}
                 isLoading={isLoading}
-                viewMode={viewMode}
+                viewMode="map"
               />
           </div>
         </div>
 
         {/* Map Panel (Desktop) */}
-        {viewMode === 'map' && (
-          <div className="flex-1 relative z-0">
-            <PharmacyMap
-              pharmacies={filteredPharmacies}
-              center={mapCenter}
-              selectedPharmacy={selectedPharmacy}
-              onSelectPharmacy={handleSelectPharmacy}
-              userLocation={isLocating ? null : userLocation}
-            />
-          </div>
-        )}
+        <div className="flex-1 relative z-0">
+          <PharmacyMap
+            pharmacies={filteredPharmacies}
+            center={mapCenter}
+            selectedPharmacy={selectedPharmacy}
+            onSelectPharmacy={handleSelectPharmacy}
+            userLocation={isLocating ? null : userLocation}
+            fitToPharmacies={searchMode === 'locality'}
+            travelMode={travelMode}
+            onTravelModeChange={setTravelMode}
+          />
+        </div>
       </main>
 
-      {/* Floating Action Button */}
-      <ContributeDataModal selectedPharmacy={selectedPharmacy} />
     </div>
   )
 }

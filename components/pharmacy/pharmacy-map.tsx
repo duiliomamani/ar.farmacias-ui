@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
-import { Navigation, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react'
+import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import 'leaflet/dist/leaflet.css'
@@ -27,23 +27,17 @@ const Popup = dynamic(
   () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
 )
-const LayersControl = dynamic(
-  () => import('react-leaflet').then((mod) => mod.LayersControl),
-  { ssr: false }
-)
-const BaseLayer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.LayersControl.BaseLayer),
-  { ssr: false }
-)
 
 function RoutingControl({
   origin,
   destination,
+  travelMode,
   onSummary,
 }: {
   origin: [number, number]
   destination: [number, number]
-  onSummary: (summary: { distanceKm: number; durationMinutes: number }) => void
+  travelMode: TravelMode
+  onSummary: (summary: RouteSummary) => void
 }) {
   // Leaflet Routing Machine is browser-only and augments the Leaflet namespace.
   const map = require('react-leaflet').useMap()
@@ -51,10 +45,20 @@ function RoutingControl({
   useEffect(() => {
     const L = require('leaflet')
     require('leaflet-routing-machine')
+    const routerConfig = travelMode === 'driving'
+      ? {
+          serviceUrl: 'https://router.project-osrm.org/route/v1',
+          profile: 'driving',
+        }
+      : {
+          serviceUrl: `https://routing.openstreetmap.de/routed-${travelMode === 'walking' ? 'foot' : 'bike'}/route/v1`,
+          profile: 'driving',
+        }
     const routingControl = L.Routing.control({
       waypoints: [L.latLng(origin[0], origin[1]), L.latLng(destination[0], destination[1])],
       router: L.Routing.osrmv1({
-        serviceUrl: 'https://router.project-osrm.org/route/v1',
+        ...routerConfig,
+        language: 'es',
       }),
       lineOptions: {
         styles: [{ color: '#16a34a', opacity: 0.9, weight: 6 }],
@@ -74,6 +78,11 @@ function RoutingControl({
         onSummary({
           distanceKm: summary.totalDistance / 1000,
           durationMinutes: Math.max(1, Math.round(summary.totalTime / 60)),
+          instructions: (event.routes?.[0]?.instructions || []).map((instruction: any) => ({
+            text: instruction.text || 'Continuar por la ruta',
+            distanceMeters: instruction.distance || 0,
+            timeSeconds: instruction.time || 0,
+          })),
         })
       }
     }
@@ -104,9 +113,36 @@ function RoutingControl({
         console.debug('[PharmacyMap] Routing cleanup skipped', error)
       }
     }
-  }, [map, origin[0], origin[1], destination[0], destination[1], onSummary])
+  }, [map, origin[0], origin[1], destination[0], destination[1], travelMode, onSummary])
 
   return null
+}
+
+function FitPharmacyBounds({ pharmacies, enabled }: { pharmacies: Pharmacy[]; enabled: boolean }) {
+  const map = require('react-leaflet').useMap()
+
+  useEffect(() => {
+    if (!enabled || pharmacies.length === 0) return
+    const L = require('leaflet')
+    const bounds = L.latLngBounds(pharmacies.map((pharmacy) => [pharmacy.lat, pharmacy.lng]))
+    map.fitBounds(bounds, { padding: [36, 36], maxZoom: 14 })
+  }, [enabled, pharmacies, map])
+
+  return null
+}
+
+type TravelMode = 'driving' | 'walking' | 'cycling'
+
+interface RouteInstruction {
+  text: string
+  distanceMeters: number
+  timeSeconds: number
+}
+
+interface RouteSummary {
+  distanceKm: number
+  durationMinutes: number
+  instructions: RouteInstruction[]
 }
 
 interface PharmacyMapProps {
@@ -115,6 +151,9 @@ interface PharmacyMapProps {
   selectedPharmacy?: Pharmacy | null
   onSelectPharmacy?: (pharmacy: Pharmacy) => void
   userLocation?: [number, number] | null
+  fitToPharmacies?: boolean
+  travelMode: TravelMode
+  onTravelModeChange: (mode: TravelMode) => void
   className?: string
 }
 
@@ -124,10 +163,13 @@ function PharmacyMapContent({
   selectedPharmacy,
   onSelectPharmacy,
   userLocation,
+  fitToPharmacies = false,
+  travelMode,
+  onTravelModeChange,
   className,
 }: PharmacyMapProps) {
   const mapRef = useRef<L.Map | null>(null)
-  const [routeSummary, setRouteSummary] = useState<{ distanceKm: number; durationMinutes: number } | null>(null)
+  const [routeSummary, setRouteSummary] = useState<RouteSummary | null>(null)
 
   // Some official records share the same geocoded point. Keep their real
   // coordinates for routing, but fan the visual markers out so none is hidden.
@@ -168,7 +210,7 @@ function PharmacyMapContent({
 
   useEffect(() => {
     setRouteSummary(null)
-  }, [selectedPharmacy?.id, userLocation?.[0], userLocation?.[1]])
+  }, [selectedPharmacy?.id, userLocation?.[0], userLocation?.[1], travelMode])
 
   // Update map center when the center prop changes (e.g., from geolocation)
   useEffect(() => {
@@ -258,6 +300,11 @@ function PharmacyMapContent({
       iconPath = '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
     }
 
+    if (pharmacy.isPermanentlyOnDuty && pharmacy.isOnDuty) {
+      color = '#0284c7'
+      iconPath = '<path d="M12 3 5 6v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>'
+    }
+
     if (pharmacy.activityLevel > 70) {
       extraClass += ' high-activity-aura'
     }
@@ -314,7 +361,7 @@ function PharmacyMapContent({
   }
 
   const handleNavigate = (pharmacy: Pharmacy) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.lat},${pharmacy.lng}`
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.lat},${pharmacy.lng}&travelmode=${travelMode}`
     window.open(url, '_blank')
   }
 
@@ -334,27 +381,19 @@ function PharmacyMapContent({
         className="w-full h-full z-0"
         zoomControl={false}
       >
-        <LayersControl position="topright">
-          <BaseLayer checked name="Google calles">
-            <TileLayer
-              attribution='&copy; Google Maps'
-              url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-              maxZoom={20}
-            />
-          </BaseLayer>
-          <BaseLayer name="OpenStreetMap">
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={19}
-            />
-          </BaseLayer>
-        </LayersControl>
+        <TileLayer
+          attribution="&copy; Google Maps"
+          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          maxZoom={20}
+        />
+
+        <FitPharmacyBounds pharmacies={pharmacies} enabled={fitToPharmacies} />
 
         {userLocation && selectedPharmacy && (
           <RoutingControl
             origin={userLocation}
             destination={[selectedPharmacy.lat, selectedPharmacy.lng]}
+            travelMode={travelMode}
             onSummary={setRouteSummary}
           />
         )}
@@ -480,17 +519,62 @@ function PharmacyMapContent({
           </Marker>
         ))}
       </MapContainer>
-      {routeSummary && selectedPharmacy && (
-        <div className="absolute right-4 top-4 z-[500] rounded-xl border bg-card/95 px-4 py-3 shadow-xl backdrop-blur">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ruta hasta {selectedPharmacy.name}</p>
-          <p className="mt-1 text-sm font-bold text-foreground">
-            {routeSummary.durationMinutes} min · {routeSummary.distanceKm.toFixed(1)} km
-          </p>
-          <p className="text-[10px] text-muted-foreground">Estimación en auto</p>
+      {selectedPharmacy && (
+        <div className="absolute right-4 top-4 z-[500] w-[min(360px,calc(100%-2rem))] rounded-xl border bg-card/95 p-4 shadow-xl backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cómo llegar</p>
+              <p className="mt-1 text-sm font-bold text-foreground">{selectedPharmacy.name}</p>
+            </div>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleNavigate(selectedPharmacy)} aria-label="Iniciar navegación">
+              <Navigation className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+            {([
+              ['driving', Car, 'Auto'],
+              ['walking', Footprints, 'A pie'],
+              ['cycling', Bike, 'Bici'],
+            ] as const).map(([mode, Icon, label]) => (
+              <Button key={mode} size="sm" variant={travelMode === mode ? 'default' : 'ghost'} className="h-8 gap-1 px-2 text-[11px]" onClick={() => onTravelModeChange(mode)}>
+                <Icon className="h-3.5 w-3.5" />{label}
+              </Button>
+            ))}
+          </div>
+          {routeSummary ? (
+            <>
+              <p className="mt-3 text-sm font-bold text-foreground">
+                {routeSummary.durationMinutes} min · {routeSummary.distanceKm.toFixed(1)} km
+              </p>
+              <p className="text-[10px] text-muted-foreground">Tiempo estimado actualizado</p>
+              <div className="mt-3 max-h-48 space-y-2 overflow-y-auto border-t pt-3">
+                {routeSummary.instructions.map((instruction, index) => (
+                  <div key={`${index}-${instruction.text}`} className="flex gap-2 text-xs">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{index + 1}</span>
+                    <div>
+                      <p className="leading-tight text-foreground">{instruction.text}</p>
+                      {instruction.distanceMeters > 0 && <p className="mt-0.5 text-[10px] text-muted-foreground">{formatDistance(instruction.distanceMeters)}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button className="mt-3 w-full gap-2" onClick={() => handleNavigate(selectedPharmacy)}>
+                <Navigation className="h-4 w-4" /> Iniciar navegación
+              </Button>
+            </>
+          ) : userLocation ? (
+            <p className="mt-3 text-xs text-muted-foreground">Calculando ruta...</p>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">Usá tu ubicación actual para calcular la ruta.</p>
+          )}
         </div>
       )}
     </div>
   )
+}
+
+function formatDistance(meters: number) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`
 }
 
 export function PharmacyMap(props: PharmacyMapProps) {
