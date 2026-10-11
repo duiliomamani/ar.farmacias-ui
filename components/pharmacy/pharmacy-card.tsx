@@ -1,6 +1,6 @@
 'use client'
 
-import { Navigation, MapPin, Share2, Flame, ExternalLink, ShieldCheck, Clock3, Phone } from 'lucide-react'
+import { Navigation, MapPin, Share2, Flame, ExternalLink, ShieldCheck, Clock3, Phone, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,9 +14,11 @@ interface PharmacyCardProps {
   isSelected?: boolean
   userLocation?: [number, number] | null
   onSelect?: (pharmacy: Pharmacy) => void
+  isFavorite?: boolean
+  onToggleFavorite?: (pharmacy: Pharmacy) => void
 }
 
-export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: PharmacyCardProps) {
+export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect, isFavorite = false, onToggleFavorite }: PharmacyCardProps) {
   const handleShowRoute = () => {
     onSelect?.(pharmacy)
   }
@@ -114,8 +116,24 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
               </div>
             </div>
 
-            <div className="text-[11px] font-black text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md shrink-0">
-              {pharmacy.distance?.toFixed(1)} km
+            <div className="flex shrink-0 items-center gap-1">
+              <div className="text-[11px] font-black text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md">
+                {pharmacy.distance?.toFixed(1)} km
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 rounded-full"
+                aria-label={isFavorite ? `Quitar ${pharmacy.name} de favoritas` : `Guardar ${pharmacy.name} como favorita`}
+                aria-pressed={isFavorite}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onToggleFavorite?.(pharmacy)
+                }}
+              >
+                <Star className={cn('h-4 w-4', isFavorite && 'fill-amber-400 text-amber-500')} />
+              </Button>
             </div>
           </div>
 

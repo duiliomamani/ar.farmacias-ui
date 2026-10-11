@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
-import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X, ChevronDown, ChevronUp, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CommunityReportActions } from './community-report-actions'
@@ -151,6 +151,8 @@ interface PharmacyMapProps {
   fitToPharmacies?: boolean
   travelMode: TravelMode
   onTravelModeChange: (mode: TravelMode) => void
+  favoriteIds?: string[]
+  onToggleFavorite?: (pharmacy: Pharmacy) => void
   className?: string
 }
 
@@ -163,6 +165,8 @@ function PharmacyMapContent({
   fitToPharmacies = false,
   travelMode,
   onTravelModeChange,
+  favoriteIds = [],
+  onToggleFavorite,
   className,
 }: PharmacyMapProps) {
   const mapRef = useRef<L.Map | null>(null)
@@ -469,6 +473,16 @@ function PharmacyMapContent({
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 rounded-full"
+                onClick={() => onToggleFavorite?.(selectedPharmacy)}
+                aria-label={favoriteIds.includes(selectedPharmacy.id) ? `Quitar ${selectedPharmacy.name} de favoritas` : `Guardar ${selectedPharmacy.name} como favorita`}
+                aria-pressed={favoriteIds.includes(selectedPharmacy.id)}
+              >
+                <Star className={cn('h-4 w-4', favoriteIds.includes(selectedPharmacy.id) && 'fill-amber-400 text-amber-500')} />
+              </Button>
               <Button
                 size="icon"
                 variant="outline"

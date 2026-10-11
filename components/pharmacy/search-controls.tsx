@@ -1,5 +1,5 @@
 'use client'
-import { CalendarDays, Crosshair, MapPin, Search } from 'lucide-react'
+import { CalendarDays, Crosshair, MapPin, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -26,6 +26,8 @@ interface SearchControlsProps {
 }
 
 export function SearchControls({
+  searchQuery,
+  onSearchChange,
   radius,
   onRadiusChange,
   onUseMyLocation,
@@ -38,7 +40,7 @@ export function SearchControls({
   onDateChange,
   cities,
   className,
-}: Omit<SearchControlsProps, 'searchQuery' | 'onSearchChange'>) {
+}: SearchControlsProps) {
   return (
     <div className={cn("space-y-4", className)}>
       {/* Location Actions Row */}
@@ -54,6 +56,30 @@ export function SearchControls({
             {isLocating ? "Obteniendo ubicación..." : "Usar mi ubicación actual"}
           </span>
         </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+        <Input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Buscar por nombre, dirección o localidad"
+          className="h-10 bg-card pl-9 pr-9 text-xs font-medium"
+          aria-label="Buscar farmacia por nombre o dirección"
+        />
+        {searchQuery && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full"
+            onClick={() => onSearchChange('')}
+            aria-label="Limpiar búsqueda"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       <div className="space-y-3 rounded-xl border border-border/50 bg-card/50 p-3">

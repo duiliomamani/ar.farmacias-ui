@@ -10,6 +10,9 @@ import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
 import { Feedback } from '@/components/feedback'
+import { PwaActions } from '@/components/pwa-actions'
+import { usePharmacyFavorites } from '@/hooks/use-pharmacy-favorites'
+import { useFavoriteNotifications } from '@/hooks/use-favorite-notifications'
 import {
   groupPharmacies,
   filterPharmacies,
@@ -36,6 +39,12 @@ const dateInputValue = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
+
+const normalizeSearch = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('es')
+  .trim()
 
 type TravelMode = 'driving' | 'walking' | 'cycling'
 
@@ -66,10 +75,12 @@ export function PharmacyFinder() {
   const [searchMode, setSearchMode] = useState<'nearby' | 'locality'>('nearby')
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedDate, setSelectedDate] = useState(dateInputValue(getEffectiveDutyDate()))
+  const [searchQuery, setSearchQuery] = useState('')
   const [travelMode, setTravelMode] = useState<TravelMode>('driving')
   // Mobile-specific UI states
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [mobileSheetState, setMobileSheetState] = useState<SheetState>('collapsed')
+  const { favoriteIds, toggleFavorite } = usePharmacyFavorites()
 
   // Initialize device ID
   useEffect(() => {
@@ -156,14 +167,29 @@ export function PharmacyFinder() {
     }))
   }, [rawPharmacies, userLocation, mapCenter])
 
+  const {
+    enabled: notificationsEnabled,
+    supported: notificationsSupported,
+    toggleNotifications,
+  } = useFavoriteNotifications(groupedPharmacies, favoriteIds, selectedDate)
+
   // Filter by radius when searching nearby, then sort all returned categories.
   const filteredPharmacies = useMemo(() => {
     const result = searchMode === 'locality'
       ? groupedPharmacies
       : filterPharmacies(groupedPharmacies, radius)
 
-    return sortPharmacies(result)
-  }, [groupedPharmacies, radius, searchMode])
+    const query = normalizeSearch(searchQuery)
+    const searched = query
+      ? result.filter((pharmacy) => normalizeSearch([
+          pharmacy.name,
+          pharmacy.address,
+          pharmacy.city,
+        ].filter(Boolean).join(' ')).includes(query))
+      : result
+
+    return sortPharmacies(searched)
+  }, [groupedPharmacies, radius, searchMode, searchQuery])
 
   const isLoading = isDataLoading || isLocating
 
@@ -175,6 +201,12 @@ export function PharmacyFinder() {
       setMobileSheetState('partial')
     }
   }, [])
+
+  const handleToggleFavorite = useCallback((pharmacy: Pharmacy) => {
+    const wasFavorite = favoriteIds.includes(pharmacy.id)
+    toggleFavorite(pharmacy.id)
+    toast.success(wasFavorite ? 'Farmacia eliminada de favoritas.' : 'Farmacia guardada en favoritas.')
+  }, [favoriteIds, toggleFavorite])
 
   return (
     <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background">
@@ -197,6 +229,11 @@ export function PharmacyFinder() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <PwaActions
+            notificationsEnabled={notificationsEnabled}
+            notificationsSupported={notificationsSupported}
+            onToggleNotifications={toggleNotifications}
+          />
           <JujuyDevLinks />
           <Feedback inline />
           <ThemeToggle />
@@ -210,6 +247,8 @@ export function PharmacyFinder() {
           {/* Search Controls Container */}
           <div className="p-4 border-b bg-muted/20 space-y-3">
             <SearchControls
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
               radius={radius}
               onRadiusChange={setRadius}
               onUseMyLocation={handleUseMyLocation}
@@ -233,6 +272,8 @@ export function PharmacyFinder() {
               onSelectPharmacy={handleSelectPharmacy}
               isLoading={isLoading}
               viewMode="map"
+              favoriteIds={favoriteIds}
+              onToggleFavorite={handleToggleFavorite}
             />
           </div>
         </div>
@@ -248,6 +289,8 @@ export function PharmacyFinder() {
             fitToPharmacies={searchMode === 'locality'}
             travelMode={travelMode}
             onTravelModeChange={setTravelMode}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={handleToggleFavorite}
           />
 
           {/* Mobile-Only Overlays & Controls: hidden on md+ */}
@@ -317,6 +360,8 @@ export function PharmacyFinder() {
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <SearchControls
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
                     radius={radius}
                     onRadiusChange={setRadius}
                     onUseMyLocation={() => {
@@ -408,6 +453,8 @@ export function PharmacyFinder() {
                   isLoading={isLoading}
                   viewMode="map"
                   hideHeader={true}
+                  favoriteIds={favoriteIds}
+                  onToggleFavorite={handleToggleFavorite}
                 />
               </BottomSheet>
             )}
