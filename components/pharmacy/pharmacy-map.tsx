@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { CommunityReportActions } from './community-report-actions'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 
@@ -419,7 +420,7 @@ function PharmacyMapContent({
         ))}
       </MapContainer>
       {selectedPharmacy && (
-        <div className="absolute bottom-3 inset-x-3 sm:bottom-auto sm:inset-x-auto sm:right-4 sm:top-4 z-[500] sm:w-[360px] max-h-[55dvh] rounded-2xl border bg-card/98 p-4 shadow-2xl backdrop-blur-md flex flex-col">
+        <div className="absolute bottom-3 inset-x-3 sm:bottom-auto sm:inset-x-auto sm:right-4 sm:top-4 z-[500] sm:w-[380px] max-h-[70dvh] overflow-y-auto rounded-2xl border bg-card/98 p-4 shadow-2xl backdrop-blur-md flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5 mb-1">
@@ -479,6 +480,12 @@ function PharmacyMapContent({
               </Button>
             </div>
           </div>
+
+          {selectedPharmacy.isVoluntary && (
+            <div className="mt-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+              <CommunityReportActions pharmacy={selectedPharmacy} />
+            </div>
+          )}
 
           <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
             {([

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { PharmacyCard } from './pharmacy-card'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { Pill, Search } from 'lucide-react'
@@ -25,6 +26,22 @@ export function PharmacyList({
   viewMode = 'map',
   hideHeader = false,
 }: PharmacyListProps) {
+  const cardRefs = useRef(new Map<string, HTMLDivElement>())
+
+  useEffect(() => {
+    if (!selectedPharmacy?.id) return
+    const frame = window.requestAnimationFrame(() => {
+      const card = cardRefs.current.get(selectedPharmacy.id)
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      card?.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'center',
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [selectedPharmacy?.id])
+
   return (
     <div className="flex flex-col h-full bg-background/50">
       {/* Header */}
@@ -81,13 +98,22 @@ export function PharmacyList({
                 </div>
                 <div className={cn(viewMode === 'list' ? 'contents' : 'flex flex-col space-y-4')}>
                   {section.items.map((pharmacy) => (
-                    <PharmacyCard
+                    <div
                       key={pharmacy.id}
-                      pharmacy={pharmacy}
-                      isSelected={selectedPharmacy?.id === pharmacy.id}
-                      userLocation={userLocation}
-                      onSelect={onSelectPharmacy}
-                    />
+                      ref={(element) => {
+                        if (element) cardRefs.current.set(pharmacy.id, element)
+                        else cardRefs.current.delete(pharmacy.id)
+                      }}
+                      aria-current={selectedPharmacy?.id === pharmacy.id ? 'true' : undefined}
+                      className="scroll-my-4"
+                    >
+                      <PharmacyCard
+                        pharmacy={pharmacy}
+                        isSelected={selectedPharmacy?.id === pharmacy.id}
+                        userLocation={userLocation}
+                        onSelect={onSelectPharmacy}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

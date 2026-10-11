@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, MapPin, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -31,6 +31,7 @@ function getCurrentPosition(): Promise<GeolocationPosition> {
 
 export function CommunityReportActions({ pharmacy }: CommunityReportActionsProps) {
   const queryClient = useQueryClient()
+  const promptId = useId()
   const [open, setOpen] = useState(false)
   const [isOpenReport, setIsOpenReport] = useState(true)
   const [turnstileToken, setTurnstileToken] = useState('')
@@ -69,9 +70,16 @@ export function CommunityReportActions({ pharmacy }: CommunityReportActionsProps
       toast.success('Gracias por confirmar el estado de esta farmacia.')
       setOpen(false)
     } catch (caught) {
-      const message = caught instanceof Error && caught.message
-        ? caught.message
-        : 'No se pudo registrar el reporte.'
+      const geolocationError = caught as Partial<GeolocationPositionError>
+      const message = typeof geolocationError?.code === 'number'
+        ? geolocationError.code === 1
+          ? 'Necesitamos permiso para usar tu ubicación y comprobar que estás cerca de la farmacia.'
+          : geolocationError.code === 2
+            ? 'No pudimos obtener tu ubicación. Revisá que el GPS esté activado.'
+            : 'La ubicación tardó demasiado. Intentá nuevamente.'
+        : caught instanceof Error && caught.message && caught.message !== '[object Object]'
+          ? caught.message
+          : 'No se pudo registrar el reporte. Intentá nuevamente.'
       setError(message)
     } finally {
       setSubmitting(false)
@@ -81,14 +89,27 @@ export function CommunityReportActions({ pharmacy }: CommunityReportActionsProps
   }
 
   return (
-    <div className="space-y-1.5" onClick={(event) => event.stopPropagation()}>
-      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">¿Está atendiendo ahora?</p>
-      <div className="grid grid-cols-2 gap-1.5">
-        <Button type="button" variant="outline" size="sm" className="border-green-600/30 text-green-700 hover:bg-green-500/10 dark:text-green-300" onClick={() => startReport(true)}>
-          <CheckCircle2 /> Sí, atiende
+    <div className="space-y-2" onClick={(event) => event.stopPropagation()}>
+      <p id={promptId} className="text-[10px] font-black uppercase tracking-widest text-foreground">¿Está atendiendo ahora?</p>
+      <div className="grid gap-2" role="group" aria-labelledby={promptId}>
+        <Button
+          type="button"
+          size="sm"
+          className="h-10 w-full bg-emerald-600 font-black text-white shadow-sm hover:bg-emerald-700 focus-visible:ring-emerald-600"
+          aria-label={`Confirmar que ${pharmacy.name} está atendiendo ahora`}
+          onClick={() => startReport(true)}
+        >
+          <CheckCircle2 className="h-4 w-4" /> Confirmar que está atendiendo
         </Button>
-        <Button type="button" variant="outline" size="sm" className="border-red-600/30 text-red-700 hover:bg-red-500/10 dark:text-red-300" onClick={() => startReport(false)}>
-          <XCircle /> Está cerrada
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 w-full border-red-600/30 font-bold text-red-700 hover:bg-red-500/10 dark:text-red-300"
+          aria-label={`Reportar que ${pharmacy.name} está cerrada`}
+          onClick={() => startReport(false)}
+        >
+          <XCircle className="h-4 w-4" /> Reportar que está cerrada
         </Button>
       </div>
 

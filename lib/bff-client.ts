@@ -15,21 +15,31 @@ export class BffClientError extends Error {
   }
 }
 
+type ApiErrorItem = string | { message?: unknown; code?: unknown }
+
 type ApiErrorPayload = {
-  message?: string | string[]
-  errors?: string[]
-  error?: string | string[]
+  message?: unknown
+  errors?: ApiErrorItem[]
+  error?: unknown
+}
+
+function readableError(value: unknown): string[] {
+  if (typeof value === 'string' && value.trim()) return [value.trim()]
+  if (Array.isArray(value)) return value.flatMap(readableError)
+  if (value && typeof value === 'object' && 'message' in value) {
+    return readableError((value as { message?: unknown }).message)
+  }
+  return []
 }
 
 function errorMessage(payload: ApiErrorPayload | null, status: number): string {
-  const messages = payload?.errors?.filter(Boolean)
-  if (messages?.length) return messages.join(', ')
+  const messages = [
+    ...readableError(payload?.errors),
+    ...readableError(payload?.message),
+    ...readableError(payload?.error),
+  ]
 
-  const message = Array.isArray(payload?.message)
-    ? payload.message.join(', ')
-    : payload?.message || (Array.isArray(payload?.error) ? payload.error.join(', ') : payload?.error)
-
-  return message || `Error ${status}`
+  return messages[0] || `No se pudo completar la solicitud (error ${status}).`
 }
 
 /** Cliente público del BFF. Nunca contiene la URL privada del core. */

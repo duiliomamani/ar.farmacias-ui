@@ -57,7 +57,11 @@ export class PharmacyService {
     deviceId: string;
     turnstileToken: string;
   }): Promise<{ accepted: boolean; expiresAt: string }> {
-    return BffClient.post(`/api/pharmacies/${encodeURIComponent(pharmacyId)}/community-reports`, report);
+    return BffClient.post(
+      `/api/pharmacies/${encodeURIComponent(pharmacyId)}/community-reports`,
+      report,
+      { showToast: false },
+    );
   }
 
 }
