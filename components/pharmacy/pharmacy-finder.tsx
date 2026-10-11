@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useQuery } from '@tanstack/react-query'
 import { SearchControls } from './search-controls'
 import { PharmacyList } from './pharmacy-list'
+import { GlobalDutyCalendar } from './global-duty-calendar'
 import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
@@ -20,7 +21,7 @@ import {
   type Pharmacy,
 } from '@/lib/pharmacy-data'
 import { PharmacyService } from '@/lib/api'
-import { Pill, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft } from 'lucide-react'
+import { Pill, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft, CalendarDays } from 'lucide-react'
 import { getDeviceId, calculateDistance, getEffectiveDutyDate, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -79,6 +80,7 @@ export function PharmacyFinder() {
   const [travelMode, setTravelMode] = useState<TravelMode>('driving')
   // Mobile-specific UI states
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [mobileSheetState, setMobileSheetState] = useState<SheetState>('collapsed')
   const { favoriteIds, toggleFavorite } = usePharmacyFavorites()
 
@@ -208,6 +210,17 @@ export function PharmacyFinder() {
     toast.success(wasFavorite ? 'Farmacia eliminada de favoritas.' : 'Farmacia guardada en favoritas.')
   }, [favoriteIds, toggleFavorite])
 
+  const handleApplyCalendarDate = useCallback((date: string, city: string) => {
+    setSelectedDate(date)
+    setSelectedCity(city)
+    setSearchMode('locality')
+    setUserLocation(null)
+    setSelectedPharmacy(null)
+    setMapCenter([-24.1858, -65.2995])
+    setMobileSheetState('expanded')
+    setIsCalendarOpen(false)
+  }, [])
+
   return (
     <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background">
       {/* Top Navbar (Responsive for Mobile & Desktop) */}
@@ -229,6 +242,17 @@ export function PharmacyFinder() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 rounded-xl px-2 sm:px-3"
+            onClick={() => setIsCalendarOpen(true)}
+            aria-label="Abrir calendario global de turnos"
+          >
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span className="hidden text-xs font-bold lg:inline">Calendario</span>
+          </Button>
           <PwaActions
             notificationsEnabled={notificationsEnabled}
             notificationsSupported={notificationsSupported}
@@ -461,6 +485,15 @@ export function PharmacyFinder() {
           </div>
         </div>
       </main>
+
+      <GlobalDutyCalendar
+        open={isCalendarOpen}
+        onOpenChange={setIsCalendarOpen}
+        selectedDate={selectedDate}
+        selectedCity={selectedCity}
+        cities={JUJUY_CITIES}
+        onApply={handleApplyCalendarDate}
+      />
     </div>
   )
 }
