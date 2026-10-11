@@ -18,8 +18,17 @@ interface PwaActionsProps {
 }
 
 type InstallEnvironment =
-  | 'android'
-  | 'ios'
+  | 'android-chrome'
+  | 'android-edge'
+  | 'android-firefox'
+  | 'android-opera'
+  | 'android-samsung'
+  | 'android-vivaldi'
+  | 'android-webview'
+  | 'android-other'
+  | 'ios-chrome'
+  | 'ios-safari'
+  | 'ios-other'
   | 'mac-safari'
   | 'desktop-chrome'
   | 'desktop-edge'
@@ -39,8 +48,21 @@ function detectInstallEnvironment(): InstallEnvironment {
   const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
-  if (isIOS) return 'ios'
-  if (/Android/i.test(userAgent)) return 'android'
+  if (isIOS) {
+    if (/CriOS/i.test(userAgent)) return 'ios-chrome'
+    if (!/FxiOS|EdgiOS|OPiOS/i.test(userAgent)) return 'ios-safari'
+    return 'ios-other'
+  }
+  if (/Android/i.test(userAgent)) {
+    if (/; wv\)|Version\/4\.0.*Chrome|FBAN|FBAV|Instagram/i.test(userAgent)) return 'android-webview'
+    if (/SamsungBrowser/i.test(userAgent)) return 'android-samsung'
+    if (/EdgA|Edg\//i.test(userAgent)) return 'android-edge'
+    if (/Firefox|Fennec/i.test(userAgent)) return 'android-firefox'
+    if (/OPR|Opera/i.test(userAgent)) return 'android-opera'
+    if (/Vivaldi/i.test(userAgent)) return 'android-vivaldi'
+    if (/Chrome|Chromium/i.test(userAgent)) return 'android-chrome'
+    return 'android-other'
+  }
   if (/Edg\//i.test(userAgent)) return 'desktop-edge'
   if (/Chrome|Chromium/i.test(userAgent) && !/OPR|Opera/i.test(userAgent)) return 'desktop-chrome'
 
@@ -54,19 +76,79 @@ function detectInstallEnvironment(): InstallEnvironment {
 
 function getInstallGuide(environment: InstallEnvironment): InstallGuide {
   switch (environment) {
-    case 'ios':
+    case 'ios-chrome':
+      return {
+        title: 'Instalar con Google Chrome',
+        intro: 'En Chrome para iPhone o iPad:',
+        steps: ['Tocá Compartir, a la derecha de la barra de direcciones.', 'Elegí Agregar a pantalla principal.', 'Confirmá tocando Agregar.'],
+        note: 'Si no aparece la opción, usá una pestaña normal y actualizá Chrome.',
+      }
+    case 'ios-safari':
+      return {
+        title: 'Instalar con Safari',
+        intro: 'En Safari para iPhone o iPad:',
+        steps: ['Tocá Compartir.', 'Elegí Agregar a inicio.', 'Confirmá tocando Agregar.'],
+        note: 'Si no aparece la opción, usá una pestaña normal y actualizá Safari.',
+      }
+    case 'ios-other':
       return {
         title: 'Instalar en iPhone o iPad',
         intro: 'Desde el navegador donde abriste FarmaJUY:',
-        steps: ['Tocá Compartir.', 'Elegí Agregar a inicio.', 'Confirmá tocando Agregar.'],
-        note: 'Si no aparece la opción, usá una pestaña normal y actualizá el navegador.',
+        steps: ['Abrí el menú del navegador y tocá Compartir.', 'Elegí Agregar a pantalla principal.', 'Confirmá tocando Agregar.'],
+        note: 'La ubicación de Compartir puede variar según el navegador.',
       }
-    case 'android':
+    case 'android-chrome':
+      return {
+        title: 'Instalar con Google Chrome',
+        intro: 'En Chrome para Android:',
+        steps: ['Tocá el menú de tres puntos (⋮).', 'Entrá en Instalar y crear acceso directo.', 'Elegí Instalar y seguí las indicaciones.'],
+        note: 'La opción puede llamarse Agregar a pantalla principal en versiones anteriores.',
+      }
+    case 'android-edge':
+      return {
+        title: 'Instalar con Microsoft Edge',
+        intro: 'En Edge para Android:',
+        steps: ['Abrí el menú (⋯).', 'Elegí Agregar al teléfono.', 'Tocá Instalar o Crear acceso directo y confirmá.'],
+        note: 'El nombre de la última opción depende de la versión de Edge.',
+      }
+    case 'android-firefox':
+      return {
+        title: 'Instalar con Firefox',
+        intro: 'En Firefox para Android:',
+        steps: ['Tocá el menú de tres puntos (⋮).', 'Elegí Instalar.', 'Tocá Agregar automáticamente o ubicá el ícono en la pantalla.'],
+        note: 'Si aparece Agregar a pantalla principal, esa opción crea un acceso directo.',
+      }
+    case 'android-samsung':
+      return {
+        title: 'Instalar con Samsung Internet',
+        intro: 'En Samsung Internet:',
+        steps: ['Tocá el menú de tres líneas (☰).', 'Elegí Añadir página a.', 'Seleccioná Pantalla de inicio y confirmá.'],
+      }
+    case 'android-opera':
+      return {
+        title: 'Instalar con Opera',
+        intro: 'En Opera para Android:',
+        steps: ['Abrí el menú junto a la barra de direcciones.', 'Elegí Añadir a.', 'Seleccioná Pantalla de inicio y confirmá.'],
+      }
+    case 'android-vivaldi':
+      return {
+        title: 'Instalar con Vivaldi',
+        intro: 'En Vivaldi para Android:',
+        steps: ['Abrí el menú de Vivaldi.', 'Elegí Añadir página a y luego Pantalla de inicio.', 'Tocá Instalar y confirmá.'],
+      }
+    case 'android-webview':
+      return {
+        title: 'Abrir en un navegador para instalar',
+        intro: 'Abriste FarmaJUY dentro de otra aplicación:',
+        steps: ['Abrí el menú de esta pantalla.', 'Elegí Abrir en Chrome, Abrir en el navegador o una opción similar.', 'En el navegador, volvé a tocar Instalar FarmaJUY.'],
+        note: 'Los navegadores internos de algunas aplicaciones no permiten instalar aplicaciones web.',
+      }
+    case 'android-other':
       return {
         title: 'Instalar en Android',
         intro: 'Desde el navegador donde abriste FarmaJUY:',
-        steps: ['Tocá el menú de tres puntos (⋮).', 'Elegí Instalar aplicación o Agregar a pantalla principal.', 'Confirmá tocando Instalar o Agregar.'],
-        note: 'Si no aparece la opción, usá una pestaña normal y actualizá el navegador.',
+        steps: ['Abrí el menú del navegador.', 'Buscá Instalar, Añadir a o Agregar a pantalla principal.', 'Elegí la opción disponible y confirmá.'],
+        note: 'Algunos navegadores crean un acceso directo en lugar de instalar la aplicación completa.',
       }
     case 'mac-safari':
       return {

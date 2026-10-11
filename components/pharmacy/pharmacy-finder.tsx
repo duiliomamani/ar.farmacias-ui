@@ -20,7 +20,7 @@ import {
   sortPharmacies,
   type Pharmacy,
 } from '@/lib/pharmacy-data'
-import { PharmacyService } from '@/lib/api'
+import { FireStationService, HealthFacilityService, PharmacyService } from '@/lib/api'
 import { Pill, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft, CalendarDays } from 'lucide-react'
 import { getDeviceId, calculateDistance, getEffectiveDutyDate, cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -46,6 +46,11 @@ const normalizeSearch = (value: string) => value
   .replace(/[\u0300-\u036f]/g, '')
   .toLocaleLowerCase('es')
   .trim()
+
+const localityKey = (value: string) => normalizeSearch(value)
+  .replace(/\bldor\b/g, 'libertador')
+  .replace(/\bgral\b/g, 'general')
+  .replace(/^san pedro de jujuy$/, 'san pedro')
 
 type TravelMode = 'driving' | 'walking' | 'cycling'
 
@@ -159,6 +164,43 @@ export function PharmacyFinder() {
     },
     retry: false,
   })
+
+  const { data: healthFacilities = [] } = useQuery({
+    queryKey: ['health-facilities', 'idejuy'],
+    queryFn: () => HealthFacilityService.getAll(),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  })
+
+  const { data: fireStations = [] } = useQuery({
+    queryKey: ['fire-stations', 'idejuy'],
+    queryFn: () => FireStationService.getAll(),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  })
+
+  const availableCities = useMemo(() => {
+    const citiesByKey = new Map<string, string>()
+    JUJUY_CITIES.forEach((city) => citiesByKey.set(localityKey(city), city))
+    ;[...healthFacilities, ...fireStations].forEach((place) => {
+      const key = localityKey(place.locality)
+      if (!citiesByKey.has(key)) citiesByKey.set(key, place.locality)
+    })
+
+    return [...citiesByKey.values()].sort((first, second) => first.localeCompare(second, 'es'))
+  }, [healthFacilities, fireStations])
+
+  const filteredHealthFacilities = useMemo(() => {
+    if (searchMode !== 'locality' || !selectedCity) return healthFacilities
+    const selectedKey = localityKey(selectedCity)
+    return healthFacilities.filter((facility) => localityKey(facility.locality) === selectedKey)
+  }, [healthFacilities, searchMode, selectedCity])
+
+  const filteredFireStations = useMemo(() => {
+    if (searchMode !== 'locality' || !selectedCity) return fireStations
+    const selectedKey = localityKey(selectedCity)
+    return fireStations.filter((station) => localityKey(station.locality) === selectedKey)
+  }, [fireStations, searchMode, selectedCity])
 
   // Group pharmacies by location and calculate distance client-side for accuracy
   const groupedPharmacies = useMemo(() => {
@@ -290,7 +332,7 @@ export function PharmacyFinder() {
               onCityChange={setSelectedCity}
               selectedDate={selectedDate}
               onDateChange={setSelectedDate}
-              cities={JUJUY_CITIES}
+              cities={availableCities}
             />
           </div>
 
@@ -313,11 +355,13 @@ export function PharmacyFinder() {
         <div className="flex-1 relative z-0 w-full h-full">
           <PharmacyMap
             pharmacies={filteredPharmacies}
+            healthFacilities={filteredHealthFacilities}
+            fireStations={filteredFireStations}
             center={mapCenter}
             selectedPharmacy={selectedPharmacy}
             onSelectPharmacy={handleSelectPharmacy}
             userLocation={isLocating ? null : userLocation}
-            fitToPharmacies={searchMode === 'locality'}
+            fitToResults={searchMode === 'locality'}
             travelMode={travelMode}
             onTravelModeChange={setTravelMode}
             favoriteIds={favoriteIds}
@@ -345,7 +389,7 @@ export function PharmacyFinder() {
                           : (selectedCity || 'Todas las localidades')}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-medium truncate">
-                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
+                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} farmacias · {filteredHealthFacilities.length} salud · {filteredFireStations.length} cuarteles
                       </p>
                     </div>
                     <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-[10px] font-bold text-foreground shrink-0 border border-border/50">
@@ -406,7 +450,7 @@ export function PharmacyFinder() {
                     onCityChange={setSelectedCity}
                     selectedDate={selectedDate}
                     onDateChange={setSelectedDate}
-                    cities={JUJUY_CITIES}
+                    cities={availableCities}
                   />
 
                   <Button
@@ -498,7 +542,7 @@ export function PharmacyFinder() {
         onOpenChange={setIsCalendarOpen}
         selectedDate={selectedDate}
         selectedCity={selectedCity}
-        cities={JUJUY_CITIES}
+        cities={availableCities}
         onApply={handleApplyCalendarDate}
       />
     </div>
