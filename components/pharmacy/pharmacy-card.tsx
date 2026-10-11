@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CommunityReportActions } from './community-report-actions'
 
 interface PharmacyCardProps {
   pharmacy: Pharmacy
@@ -36,27 +37,33 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
   const isPermanent = pharmacy.isPermanentlyOnDuty === true;
   const isVoluntary = pharmacy.isVoluntary === true;
 
-  const latestReport = pharmacy.communityReports?.[0];
+  const reports = pharmacy.communityReports || [];
   let confidenceBadge = null;
 
-  if (latestReport && !latestReport.isOnDuty) {
-    const minutes = Math.floor((Date.now() - new Date(latestReport.createdAt).getTime()) / 60000);
+  if (reports.length > 0) {
+    const openCount = reports.filter((report) => report.isOnDuty).length;
+    const closedCount = reports.length - openCount;
+    const latestReport = reports.reduce((latest, report) =>
+      new Date(report.createdAt).getTime() > new Date(latest.createdAt).getTime() ? report : latest
+    );
+    const minutes = Math.max(0, Math.floor((Date.now() - new Date(latestReport.createdAt).getTime()) / 60000));
     const timeStr = minutes >= 60 ? `${Math.floor(minutes / 60)} hs` : `${minutes} min`;
-    confidenceBadge = (
-      <div className="bg-orange-50 text-orange-700 border-orange-200 border px-1.5 py-1 rounded text-[9px] font-bold w-full mt-1.5 flex items-center gap-1">
-        <span>⚠️</span> Reportada como cerrada hace {timeStr}
-      </div>
-    );
-  } else {
-    const recentVerifiedReport = pharmacy.communityReports?.find(
-      (r) => r.isOnDuty && (Date.now() - new Date(r.createdAt).getTime()) < 2 * 60 * 60 * 1000
-    );
-    if (recentVerifiedReport) {
-      const minutes = Math.floor((Date.now() - new Date(recentVerifiedReport.createdAt).getTime()) / 60000);
-      const timeStr = minutes >= 60 ? `${Math.floor(minutes / 60)} hs` : `${minutes} min`;
+    if (openCount === closedCount) {
       confidenceBadge = (
-        <div className="bg-green-50 text-green-700 border-green-200 border px-1.5 py-1 rounded text-[9px] font-bold w-full mt-1.5 flex items-center gap-1">
-          <span>✅</span> Confirmada por la comunidad hace {timeStr}
+        <div className="mt-1.5 flex w-full items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-1 text-[9px] font-bold text-amber-700">
+          <span>⚠️</span> Información dividida · actualización hace {timeStr}
+        </div>
+      );
+    } else if (openCount > closedCount) {
+      confidenceBadge = (
+        <div className="mt-1.5 flex w-full items-center gap-1 rounded border border-green-200 bg-green-50 px-1.5 py-1 text-[9px] font-bold text-green-700">
+          <span>✅</span> {openCount} {openCount === 1 ? 'persona confirma' : 'personas confirman'} que atiende · hace {timeStr}
+        </div>
+      );
+    } else {
+      confidenceBadge = (
+        <div className="mt-1.5 flex w-full items-center gap-1 rounded border border-orange-200 bg-orange-50 px-1.5 py-1 text-[9px] font-bold text-orange-700">
+          <span>⚠️</span> {closedCount} {closedCount === 1 ? 'persona reporta' : 'personas reportan'} que está cerrada · hace {timeStr}
         </div>
       );
     }
@@ -117,6 +124,8 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect }: P
               Atención no garantizada. Recomendamos llamar antes de ir.
             </p>
           )}
+
+          {isVoluntary && <CommunityReportActions pharmacy={pharmacy} />}
 
           {/* Address & Hours details */}
           <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-0.5">
