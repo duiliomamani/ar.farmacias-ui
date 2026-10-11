@@ -144,6 +144,16 @@
   z-index: 0;
 }
 
+/* Hide Leaflet Routing Machine default itinerary panel */
+.leaflet-routing-container,
+.leaflet-routing-container-hide,
+.leaflet-routing-collapse-btn,
+.leaflet-top .leaflet-routing-container,
+.leaflet-bottom .leaflet-routing-container,
+.leaflet-routing-alternatives-container {
+  display: none !important;
+}
+
 /* Custom Popup Style */
 .farmaya-popup .leaflet-popup-content-wrapper {
   @apply bg-card border-2 border-primary/20 rounded-xl shadow-2xl;

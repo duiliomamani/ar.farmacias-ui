@@ -67,6 +67,12 @@ function RoutingControl({
       createMarker: () => null,
     }).addTo(map)
 
+    // Hide the native itinerary UI container so our custom bottom sheet/card is the only interface
+    const container = routingControl.getContainer()
+    if (container) {
+      container.style.display = 'none'
+    }
+
     let isActive = true
     const handleRoutesFound = (event: any) => {
       if (!isActive) return
