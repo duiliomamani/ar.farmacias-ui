@@ -73,12 +73,12 @@ export function SearchControls({
 
         {searchMode === 'locality' && (
           <div className="grid gap-2 sm:grid-cols-2">
-            <Select value={selectedCity || 'ALL'} onValueChange={(value) => onCityChange(!value || value === 'ALL' ? '' : value)}>
+            <Select value={selectedCity || 'TODAS'} onValueChange={(value) => onCityChange(!value || value === 'TODAS' ? '' : value)}>
               <SelectTrigger className="w-full bg-background text-xs">
                 <SelectValue placeholder="Todas las localidades" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">Todas las localidades</SelectItem>
+                <SelectItem value="TODAS">Todas las localidades</SelectItem>
                 {cities.map((city) => <SelectItem key={city} value={city}>{city}</SelectItem>)}
               </SelectContent>
             </Select>
