@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { SearchControls } from './search-controls'
-import { ScraperMonitor } from './scraper-monitor'
 import { PharmacyList } from './pharmacy-list'
 import { BottomSheet } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -133,7 +132,9 @@ export function PharmacyFinder() {
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
     queryKey: ['pharmacies', searchMode, userLocation || mapCenter, radius, selectedCity, selectedDate],
     queryFn: async () => {
-      const effectiveDate = new Date(`${selectedDate}T12:00:00`).toISOString()
+      // The duty calendar is Argentina-based. Keep the selected calendar day
+      // stable even if the browser or server runs in another timezone.
+      const effectiveDate = new Date(`${selectedDate}T12:00:00-03:00`).toISOString()
       if (searchMode === 'locality') {
         return PharmacyService.getByDate(effectiveDate, selectedCity || undefined)
       }
@@ -288,7 +289,6 @@ export function PharmacyFinder() {
               onDateChange={setSelectedDate}
               cities={JUJUY_CITIES}
             />
-            <div className="mt-3"><ScraperMonitor /></div>
           </div>
 
           {/* Pharmacy List Container */}

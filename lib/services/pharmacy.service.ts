@@ -1,18 +1,6 @@
 import type { Pharmacy } from '../pharmacy-data';
 import { BffClient } from '../bff-client';
 
-export interface ScrapingStatus {
-  status: 'running' | 'success' | 'failed'
-  startedAt: string
-  finishedAt?: string
-  recordsFound: number
-  recordsValidated: number
-  recordsSaved: number
-  staleRemoved: number
-  errorMessages: string[]
-  structureChanges: string[]
-}
-
 const formatISO = (dateStr?: string) => {
   if (!dateStr) return undefined;
   try {
@@ -59,10 +47,6 @@ export class PharmacyService {
     const isoDate = formatISO(date);
     const data = await BffClient.get<any[]>('/api/pharmacies/by-date', { date: isoDate, city });
     return data.map(mapBackendPharmacy);
-  }
-
-  static async getScrapingStatus(): Promise<ScrapingStatus | null> {
-    return BffClient.get<ScrapingStatus | null>('/api/scraping/turnos-jujuy/status');
   }
 
 }

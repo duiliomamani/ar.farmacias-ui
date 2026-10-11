@@ -44,7 +44,6 @@ El frontend expone estas rutas internas:
 ```text
 GET  /api/pharmacies/nearby
 GET  /api/pharmacies/by-date
-GET  /api/scraping/turnos-jujuy/status
 POST /api/feedback
 GET  /api/health
 ```

@@ -43,19 +43,19 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
  * If the current local time is before 8:00 AM, we are still in the previous day's duty cycle.
  */
 export function getEffectiveDutyDate(): Date {
-  const now = new Date()
-  const hours = now.getHours()
-  
-  const effectiveDate = new Date(now)
-  
-  // If it's before 8 AM local time, we use the previous calendar day
-  if (hours < 8) {
-    effectiveDate.setDate(now.getDate() - 1)
-  }
-  
-  // Set to noon to avoid UTC day-flip issues when converting to ISO string
-  // (Argentina is UTC-3, so noon local is 15:00 UTC, same day)
-  effectiveDate.setHours(12, 0, 0, 0)
-  
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  const effectiveDate = new Date(Number(values.year), Number(values.month) - 1, Number(values.day), 12)
+
+  // Duties run from 08:00 to 08:00 in Argentina.
+  if (Number(values.hour) < 8) effectiveDate.setDate(effectiveDate.getDate() - 1)
+
   return effectiveDate
 }

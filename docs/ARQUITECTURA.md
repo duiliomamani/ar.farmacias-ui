@@ -322,13 +322,7 @@ Consulta:
 GET /api/scraping/turnos-jujuy/status
 ```
 
-La UI lo consume mediante:
-
-```text
-GET /api/scraping/turnos-jujuy/status
-```
-
-El componente `ScraperMonitor` muestra la última ejecución, cantidad encontrada, validada, guardada, eliminada y cambios de estructura.
+El estado se conserva en el backend para diagnóstico y observabilidad. No se expone como tarjeta dentro de la interfaz principal.
 
 ## 8. Feedback, Turnstile y Telegram opcional
 
@@ -474,7 +468,6 @@ Actualmente no se utiliza login, Google OAuth ni JWT en la aplicación pública.
 |---|---|---|
 | GET | `/api/pharmacies/nearby` | Farmacias cercanas |
 | GET | `/api/pharmacies/by-date` | Turnos por fecha/localidad |
-| GET | `/api/scraping/turnos-jujuy/status` | Último estado del scraper |
 | POST | `/api/feedback` | Enviar feedback |
 | OPTIONS | `/api/feedback` | Preflight |
 | GET | `/api/health` | Proxy de health del core |
