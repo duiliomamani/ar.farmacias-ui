@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, BellOff, Check, Download, EllipsisVertical, Share } from 'lucide-react'
+import { Bell, BellOff, Check, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -17,6 +17,99 @@ interface PwaActionsProps {
   onToggleNotifications: () => Promise<boolean>
 }
 
+type InstallEnvironment =
+  | 'android'
+  | 'ios'
+  | 'mac-safari'
+  | 'desktop-chrome'
+  | 'desktop-edge'
+  | 'mac-other'
+  | 'windows-other'
+  | 'desktop-other'
+
+interface InstallGuide {
+  title: string
+  intro: string
+  steps: string[]
+  note?: string
+}
+
+function detectInstallEnvironment(): InstallEnvironment {
+  const userAgent = navigator.userAgent
+  const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+  if (isIOS) return 'ios'
+  if (/Android/i.test(userAgent)) return 'android'
+  if (/Edg\//i.test(userAgent)) return 'desktop-edge'
+  if (/Chrome|Chromium/i.test(userAgent) && !/OPR|Opera/i.test(userAgent)) return 'desktop-chrome'
+
+  const isMac = /Macintosh|Mac OS X/i.test(userAgent)
+  const isSafari = /Safari/i.test(userAgent) && !/Chrome|Chromium|Edg|OPR|Firefox/i.test(userAgent)
+  if (isMac && isSafari) return 'mac-safari'
+  if (isMac) return 'mac-other'
+  if (/Windows/i.test(userAgent)) return 'windows-other'
+  return 'desktop-other'
+}
+
+function getInstallGuide(environment: InstallEnvironment): InstallGuide {
+  switch (environment) {
+    case 'ios':
+      return {
+        title: 'Instalar en iPhone o iPad',
+        intro: 'Desde el navegador donde abriste FarmaJUY:',
+        steps: ['Tocá Compartir.', 'Elegí Agregar a inicio.', 'Confirmá tocando Agregar.'],
+        note: 'Si no aparece la opción, usá una pestaña normal y actualizá el navegador.',
+      }
+    case 'android':
+      return {
+        title: 'Instalar en Android',
+        intro: 'Desde el navegador donde abriste FarmaJUY:',
+        steps: ['Tocá el menú de tres puntos (⋮).', 'Elegí Instalar aplicación o Agregar a pantalla principal.', 'Confirmá tocando Instalar o Agregar.'],
+        note: 'Si no aparece la opción, usá una pestaña normal y actualizá el navegador.',
+      }
+    case 'mac-safari':
+      return {
+        title: 'Instalar en macOS con Safari',
+        intro: 'En Safari para macOS Sonoma 14 o posterior:',
+        steps: ['Hacé clic en Compartir o abrí el menú Archivo.', 'Elegí Agregar al Dock.', 'Confirmá haciendo clic en Agregar.'],
+      }
+    case 'desktop-edge':
+      return {
+        title: 'Instalar con Microsoft Edge',
+        intro: 'En Windows o macOS:',
+        steps: ['Abrí el menú de tres puntos (⋯).', 'Entrá en Aplicaciones.', 'Elegí Instalar este sitio como una aplicación y confirmá.'],
+      }
+    case 'desktop-chrome':
+      return {
+        title: 'Instalar con Google Chrome',
+        intro: 'En Windows, macOS o Linux:',
+        steps: ['Abrí el menú de tres puntos (⋮).', 'Entrá en Enviar, guardar y compartir.', 'Elegí Instalar página como aplicación y confirmá.'],
+      }
+    case 'mac-other':
+      return {
+        title: 'Instalar en macOS',
+        intro: 'Abrí FarmaJUY con Safari o Google Chrome para instalarla:',
+        steps: ['En Safari: Compartir o Archivo → Agregar al Dock.', 'En Chrome: menú ⋮ → Enviar, guardar y compartir.', 'Elegí Instalar página como aplicación y confirmá.'],
+        note: 'Safari requiere macOS Sonoma 14 o posterior.',
+      }
+    case 'windows-other':
+      return {
+        title: 'Instalar en Windows',
+        intro: 'Abrí FarmaJUY con Microsoft Edge o Google Chrome:',
+        steps: ['Abrí el menú de tres puntos del navegador.', 'En Edge elegí Aplicaciones; en Chrome, Enviar, guardar y compartir.', 'Elegí Instalar este sitio/página como aplicación y confirmá.'],
+        note: 'Algunos navegadores de escritorio no permiten instalar aplicaciones PWA.',
+      }
+    default:
+      return {
+        title: 'Instalar en la computadora',
+        intro: 'Abrí FarmaJUY con Google Chrome o Microsoft Edge:',
+        steps: ['Abrí el menú de tres puntos del navegador.', 'Buscá la sección Aplicaciones o Enviar, guardar y compartir.', 'Elegí Instalar este sitio/página como aplicación y confirmá.'],
+        note: 'Algunos navegadores de escritorio no permiten instalar aplicaciones PWA.',
+      }
+  }
+}
+
 export function PwaActions({
   notificationsEnabled,
   notificationsSupported,
@@ -24,17 +117,16 @@ export function PwaActions({
 }: PwaActionsProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallHelp, setShowInstallHelp] = useState(false)
-  const [isMobileDevice, setIsMobileDevice] = useState(false)
+  const [installEnvironment, setInstallEnvironment] = useState<InstallEnvironment>('desktop-other')
+  const [isClientReady, setIsClientReady] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || (navigator as Navigator & { standalone?: boolean }).standalone === true
     setIsStandalone(standalone)
-    setIsMobileDevice(
-      /Android|iPad|iPhone|iPod/i.test(navigator.userAgent)
-      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
-    )
+    setInstallEnvironment(detectInstallEnvironment())
+    setIsClientReady(true)
 
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch(() => undefined)
@@ -81,7 +173,8 @@ export function PwaActions({
     else toast.success('Avisos de favoritas desactivados.')
   }
 
-  const canInstall = !isStandalone && (Boolean(installPrompt) || isMobileDevice)
+  const canInstall = isClientReady && !isStandalone
+  const installGuide = getInstallGuide(installEnvironment)
 
   return (
     <>
@@ -110,27 +203,20 @@ export function PwaActions({
       <Dialog open={showInstallHelp} onOpenChange={setShowInstallHelp}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Instalar FarmaJUY</DialogTitle>
+            <DialogTitle>{installGuide.title}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 text-sm text-muted-foreground">
-            <p>Desde el menú de tu navegador, seguí estos pasos:</p>
+            <p>{installGuide.intro}</p>
             <ol className="space-y-2">
-              <li className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">1</span>
-                <span className="flex items-center gap-2">
-                  Tocá <Share className="h-4 w-4 text-primary" aria-hidden="true" /> <strong>Compartir</strong> o <EllipsisVertical className="h-4 w-4 text-primary" aria-hidden="true" /> <strong>Menú</strong>
-                </span>
-              </li>
-              <li className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">2</span>
-                <span>Elegí <strong>Agregar a inicio</strong> o <strong>Instalar aplicación</strong></span>
-              </li>
-              <li className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">3</span>
-                <span className="flex items-center gap-2">Confirmá con <strong>Agregar</strong> o <strong>Instalar</strong> <Check className="h-4 w-4 text-primary" aria-hidden="true" /></span>
-              </li>
+              {installGuide.steps.map((step, index) => (
+                <li key={step} className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">{index + 1}</span>
+                  <span className="flex-1">{step}</span>
+                  {index === installGuide.steps.length - 1 && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />}
+                </li>
+              ))}
             </ol>
-            <p className="text-xs">Si no aparece la opción, abrí FarmaJUY en una pestaña normal (no privada) y volvé a intentarlo.</p>
+            {installGuide.note && <p className="text-xs">{installGuide.note}</p>}
           </div>
         </DialogContent>
       </Dialog>
