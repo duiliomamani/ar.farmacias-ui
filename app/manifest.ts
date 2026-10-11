@@ -5,6 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'FarmaJUY — Farmacias de turno en Jujuy',
     short_name: 'FarmaJUY',
     description: 'Farmacias de turno, permanentes y de atención voluntaria en Jujuy.',
+    id: '/',
     start_url: '/',
     scope: '/',
     display: 'standalone',

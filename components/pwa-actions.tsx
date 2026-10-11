@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, BellOff, Download, Share } from 'lucide-react'
+import { Bell, BellOff, Check, Download, EllipsisVertical, Share } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -23,15 +23,18 @@ export function PwaActions({
   onToggleNotifications,
 }: PwaActionsProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIOSHelp, setShowIOSHelp] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
+  const [showInstallHelp, setShowInstallHelp] = useState(false)
+  const [isMobileDevice, setIsMobileDevice] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || (navigator as Navigator & { standalone?: boolean }).standalone === true
     setIsStandalone(standalone)
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent))
+    setIsMobileDevice(
+      /Android|iPad|iPhone|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+    )
 
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch(() => undefined)
@@ -41,19 +44,34 @@ export function PwaActions({
       event.preventDefault()
       setInstallPrompt(event as BeforeInstallPromptEvent)
     }
+    const handleInstalled = () => {
+      setInstallPrompt(null)
+      setShowInstallHelp(false)
+      setIsStandalone(true)
+      toast.success('FarmaJUY se instaló correctamente.')
+    }
+
     window.addEventListener('beforeinstallprompt', handleInstallPrompt)
-    return () => window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
+    window.addEventListener('appinstalled', handleInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
+      window.removeEventListener('appinstalled', handleInstalled)
+    }
   }, [])
 
   const install = async () => {
     if (installPrompt) {
-      await installPrompt.prompt()
-      const choice = await installPrompt.userChoice
-      if (choice.outcome === 'accepted') toast.success('FarmaJUY se instaló correctamente.')
-      setInstallPrompt(null)
-      return
+      try {
+        await installPrompt.prompt()
+        await installPrompt.userChoice
+        setInstallPrompt(null)
+        return
+      } catch {
+        setInstallPrompt(null)
+      }
     }
-    setShowIOSHelp(true)
+
+    setShowInstallHelp(true)
   }
 
   const toggleNotifications = async () => {
@@ -63,7 +81,7 @@ export function PwaActions({
     else toast.success('Avisos de favoritas desactivados.')
   }
 
-  const canInstall = !isStandalone && (Boolean(installPrompt) || isIOS)
+  const canInstall = !isStandalone && (Boolean(installPrompt) || isMobileDevice)
 
   return (
     <>
@@ -89,16 +107,30 @@ export function PwaActions({
         )}
       </div>
 
-      <Dialog open={showIOSHelp} onOpenChange={setShowIOSHelp}>
+      <Dialog open={showInstallHelp} onOpenChange={setShowInstallHelp}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Instalar FarmaJUY</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>En Safari, tocá el botón <strong className="text-foreground">Compartir</strong> y luego elegí <strong className="text-foreground">Agregar a inicio</strong>.</p>
-            <div className="flex items-center gap-2 rounded-xl border bg-muted/40 p-3 text-foreground">
-              <Share className="h-5 w-5 text-primary" /> Compartir → Agregar a inicio
-            </div>
+          <div className="space-y-4 text-sm text-muted-foreground">
+            <p>Desde el menú de tu navegador, seguí estos pasos:</p>
+            <ol className="space-y-2">
+              <li className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">1</span>
+                <span className="flex items-center gap-2">
+                  Tocá <Share className="h-4 w-4 text-primary" aria-hidden="true" /> <strong>Compartir</strong> o <EllipsisVertical className="h-4 w-4 text-primary" aria-hidden="true" /> <strong>Menú</strong>
+                </span>
+              </li>
+              <li className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">2</span>
+                <span>Elegí <strong>Agregar a inicio</strong> o <strong>Instalar aplicación</strong></span>
+              </li>
+              <li className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-foreground">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">3</span>
+                <span className="flex items-center gap-2">Confirmá con <strong>Agregar</strong> o <strong>Instalar</strong> <Check className="h-4 w-4 text-primary" aria-hidden="true" /></span>
+              </li>
+            </ol>
+            <p className="text-xs">Si no aparece la opción, abrí FarmaJUY en una pestaña normal (no privada) y volvé a intentarlo.</p>
           </div>
         </DialogContent>
       </Dialog>
