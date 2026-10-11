@@ -18,7 +18,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'FarmaYa AR - On-Duty Pharmacy Finder',
+  title: 'FarmaJUY - Farmacias de turno en Jujuy',
   description: 'Find nearby on-duty pharmacies open 24/7 across Argentina. Locate emergency pharmacies, get directions, and contact information instantly.',
   generator: 'v0.app',
   keywords: ['pharmacy', 'on-duty', 'emergency', 'farmacias de turno', '24/7', 'healthcare', 'argentina'],

@@ -184,7 +184,7 @@ export function PharmacyFinder() {
             <HeartPulse className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
           </div>
           <h1 className="text-base sm:text-lg font-heading font-black text-foreground tracking-tighter leading-tight truncate">
-            FarmaYa AR
+            FarmaJUY
           </h1>
         </div>
 

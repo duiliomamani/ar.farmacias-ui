@@ -1,4 +1,4 @@
-# FarmaYa AR — frontend
+# FarmaJUY — frontend
 
 Frontend Next.js 16 para consultar farmacias de turno y permanentes de Jujuy.
 
