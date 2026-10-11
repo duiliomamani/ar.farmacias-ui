@@ -72,6 +72,7 @@ export function PharmacyFinder() {
   const [isLocating, setIsLocating] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number]>([-24.1858, -65.2995])
+  const [searchCenter, setSearchCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [searchMode, setSearchMode] = useState<'nearby' | 'locality'>('nearby')
   const [selectedCity, setSelectedCity] = useState('')
@@ -102,6 +103,7 @@ export function PharmacyFinder() {
         (position) => {
           const coords: [number, number] = [position.coords.latitude, position.coords.longitude]
           setMapCenter(coords)
+          setSearchCenter(coords)
           setUserLocation(coords)
           setIsLocating(false)
         },
@@ -136,14 +138,15 @@ export function PharmacyFinder() {
   const handleSearchModeChange = useCallback((mode: 'nearby' | 'locality') => {
     setSearchMode(mode)
     if (mode === 'locality') {
-      setUserLocation(null)
       setMapCenter([-24.1858, -65.2995])
     }
   }, [])
 
   // Data Fetching
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
-    queryKey: ['pharmacies', searchMode, userLocation || mapCenter, radius, selectedCity, selectedDate],
+    queryKey: searchMode === 'locality'
+      ? ['pharmacies', 'locality', selectedCity, selectedDate]
+      : ['pharmacies', 'nearby', searchCenter[0], searchCenter[1], radius, selectedDate],
     queryFn: async () => {
       // The duty calendar is Argentina-based. Keep the selected calendar day
       // stable even if the browser or server runs in another timezone.
@@ -151,7 +154,7 @@ export function PharmacyFinder() {
       if (searchMode === 'locality') {
         return PharmacyService.getByDate(effectiveDate, selectedCity || undefined)
       }
-      const center = userLocation || mapCenter
+      const center = userLocation || searchCenter
       return PharmacyService.getNearby(center[0], center[1], radius * 1000, effectiveDate)
     },
     retry: false,
@@ -160,14 +163,19 @@ export function PharmacyFinder() {
   // Group pharmacies by location and calculate distance client-side for accuracy
   const groupedPharmacies = useMemo(() => {
     const grouped = groupPharmacies(rawPharmacies)
-    const center = userLocation || mapCenter
 
-    // Recalculate distance based on actual user location
-    return grouped.map((p) => ({
-      ...p,
-      distance: calculateDistance(center[0], center[1], p.lat, p.lng),
+    // A distance is meaningful only when it comes from the user's real
+    // position. The visual map center changes when a marker is selected and
+    // must never be treated as the user's location.
+    if (!userLocation) {
+      return grouped.map((pharmacy) => ({ ...pharmacy, distance: undefined }))
+    }
+
+    return grouped.map((pharmacy) => ({
+      ...pharmacy,
+      distance: calculateDistance(userLocation[0], userLocation[1], pharmacy.lat, pharmacy.lng),
     }))
-  }, [rawPharmacies, userLocation, mapCenter])
+  }, [rawPharmacies, userLocation])
 
   const {
     enabled: notificationsEnabled,
@@ -214,7 +222,6 @@ export function PharmacyFinder() {
     setSelectedDate(date)
     setSelectedCity(city)
     setSearchMode('locality')
-    setUserLocation(null)
     setSelectedPharmacy(null)
     setMapCenter([-24.1858, -65.2995])
     setMobileSheetState('expanded')

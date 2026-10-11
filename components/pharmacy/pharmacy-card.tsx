@@ -117,9 +117,11 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect, isF
             </div>
 
             <div className="flex shrink-0 items-center gap-1">
-              <div className="text-[11px] font-black text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md">
-                {pharmacy.distance?.toFixed(1)} km
-              </div>
+              {pharmacy.distance !== undefined && (
+                <div className="text-[11px] font-black text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md">
+                  {pharmacy.distance.toFixed(1)} km
+                </div>
+              )}
               <Button
                 type="button"
                 size="icon"

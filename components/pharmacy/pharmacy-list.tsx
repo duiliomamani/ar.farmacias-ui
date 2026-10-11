@@ -33,7 +33,7 @@ export function PharmacyList({
   onToggleFavorite,
 }: PharmacyListProps) {
   const cardRefs = useRef(new Map<string, HTMLDivElement>())
-  const recommendation = getRecommendedPharmacy(pharmacies)
+  const recommendation = userLocation ? getRecommendedPharmacy(pharmacies) : null
 
   useEffect(() => {
     if (!selectedPharmacy?.id) return
