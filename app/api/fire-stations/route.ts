@@ -48,7 +48,7 @@ function mapFeature(feature: IdejuyFireStationFeature): Omit<FireStation, 'local
 }
 
 export async function GET() {
-  // 1. Delegar a ar.farmacias-core
+  // 1. Delegar a condorjuy-api
   try {
     const coreResponse = await proxyToCore('/api/fire-stations')
     if (coreResponse.ok) {

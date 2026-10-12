@@ -94,7 +94,7 @@ export async function GET(request: Request) {
   const queryString = searchParams.toString()
   const corePath = `/api/health-facilities${queryString ? `?${queryString}` : ''}`
 
-  // 1. Delegar a ar.farmacias-core
+  // 1. Delegar a condorjuy-api
   try {
     const coreResponse = await proxyToCore(corePath)
     if (coreResponse.ok) {

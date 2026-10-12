@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
   const queryString = request.nextUrl.searchParams.toString()
   const corePath = `/api/georef/jujuy${queryString ? `?${queryString}` : ''}`
 
-  // 1. Delegar a ar.farmacias-core
+  // 1. Delegar a condorjuy-api
   try {
     const coreResponse = await proxyToCore(corePath)
     if (coreResponse.ok) {
