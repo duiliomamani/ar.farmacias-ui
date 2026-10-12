@@ -648,6 +648,8 @@ export function PharmacyFinder() {
               activeTab={activeTab}
             />
 
+            <AdBanner className="hidden md:block" />
+
             {/* Category Navigation Tabs */}
             {renderTabSwitcher()}
           </div>
