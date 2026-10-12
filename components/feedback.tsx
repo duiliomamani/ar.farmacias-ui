@@ -172,7 +172,7 @@ export function Feedback({ inline = false }: FeedbackProps) {
           <div className="py-6 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl text-primary">✓</div>
             <DialogTitle>¡Gracias por escribirnos!</DialogTitle>
-            <p className="mt-2 text-sm text-muted-foreground">Leemos cada mensaje para mejorar FarmaJUY.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Leemos cada mensaje para mejorar CondorJUY.</p>
             <Button className="mt-5" onClick={() => setOpen(false)}>Cerrar</Button>
           </div>
         ) : (

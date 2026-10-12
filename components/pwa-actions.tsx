@@ -93,7 +93,7 @@ function getInstallGuide(environment: InstallEnvironment): InstallGuide {
     case 'ios-other':
       return {
         title: 'Instalar en iPhone o iPad',
-        intro: 'Desde el navegador donde abriste FarmaJUY:',
+        intro: 'Desde el navegador donde abriste CondorJUY:',
         steps: ['Abrí el menú del navegador y tocá Compartir.', 'Elegí Agregar a pantalla principal.', 'Confirmá tocando Agregar.'],
         note: 'La ubicación de Compartir puede variar según el navegador.',
       }
@@ -139,14 +139,14 @@ function getInstallGuide(environment: InstallEnvironment): InstallGuide {
     case 'android-webview':
       return {
         title: 'Abrir en un navegador para instalar',
-        intro: 'Abriste FarmaJUY dentro de otra aplicación:',
-        steps: ['Abrí el menú de esta pantalla.', 'Elegí Abrir en Chrome, Abrir en el navegador o una opción similar.', 'En el navegador, volvé a tocar Instalar FarmaJUY.'],
+        intro: 'Abriste CondorJUY dentro de otra aplicación:',
+        steps: ['Abrí el menú de esta pantalla.', 'Elegí Abrir en Chrome, Abrir en el navegador o una opción similar.', 'En el navegador, volvé a tocar Instalar CondorJUY.'],
         note: 'Los navegadores internos de algunas aplicaciones no permiten instalar aplicaciones web.',
       }
     case 'android-other':
       return {
         title: 'Instalar en Android',
-        intro: 'Desde el navegador donde abriste FarmaJUY:',
+        intro: 'Desde el navegador donde abriste CondorJUY:',
         steps: ['Abrí el menú del navegador.', 'Buscá Instalar, Añadir a o Agregar a pantalla principal.', 'Elegí la opción disponible y confirmá.'],
         note: 'Algunos navegadores crean un acceso directo en lugar de instalar la aplicación completa.',
       }
@@ -171,21 +171,21 @@ function getInstallGuide(environment: InstallEnvironment): InstallGuide {
     case 'mac-other':
       return {
         title: 'Instalar en macOS',
-        intro: 'Abrí FarmaJUY con Safari o Google Chrome para instalarla:',
+        intro: 'Abrí CondorJUY con Safari o Google Chrome para instalarla:',
         steps: ['En Safari: Compartir o Archivo → Agregar al Dock.', 'En Chrome: menú ⋮ → Enviar, guardar y compartir.', 'Elegí Instalar página como aplicación y confirmá.'],
         note: 'Safari requiere macOS Sonoma 14 o posterior.',
       }
     case 'windows-other':
       return {
         title: 'Instalar en Windows',
-        intro: 'Abrí FarmaJUY con Microsoft Edge o Google Chrome:',
+        intro: 'Abrí CondorJUY con Microsoft Edge o Google Chrome:',
         steps: ['Abrí el menú de tres puntos del navegador.', 'En Edge elegí Aplicaciones; en Chrome, Enviar, guardar y compartir.', 'Elegí Instalar este sitio/página como aplicación y confirmá.'],
         note: 'Algunos navegadores de escritorio no permiten instalar aplicaciones PWA.',
       }
     default:
       return {
         title: 'Instalar en la computadora',
-        intro: 'Abrí FarmaJUY con Google Chrome o Microsoft Edge:',
+        intro: 'Abrí CondorJUY con Google Chrome o Microsoft Edge:',
         steps: ['Abrí el menú de tres puntos del navegador.', 'Buscá la sección Aplicaciones o Enviar, guardar y compartir.', 'Elegí Instalar este sitio/página como aplicación y confirmá.'],
         note: 'Algunos navegadores de escritorio no permiten instalar aplicaciones PWA.',
       }
@@ -222,7 +222,7 @@ export function PwaActions({
       setInstallPrompt(null)
       setShowInstallHelp(false)
       setIsStandalone(true)
-      toast.success('FarmaJUY se instaló correctamente.')
+      toast.success('CondorJUY se instaló correctamente.')
     }
 
     window.addEventListener('beforeinstallprompt', handleInstallPrompt)
@@ -262,7 +262,7 @@ export function PwaActions({
     <>
       <div className="flex items-center gap-1">
         {canInstall && (
-          <Button type="button" size="icon" variant="outline" className="h-8 w-8 rounded-xl" onClick={install} aria-label="Instalar FarmaJUY" title="Instalar FarmaJUY">
+          <Button type="button" size="icon" variant="outline" className="h-8 w-8 rounded-xl" onClick={install} aria-label="Instalar CondorJUY" title="Instalar CondorJUY">
             <Download className="h-4 w-4" />
           </Button>
         )}

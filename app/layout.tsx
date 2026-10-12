@@ -18,14 +18,14 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  applicationName: 'SaludJUY',
-  title: 'SaludJUY - Farmacias de turno, Centros de Salud y Bomberos en Jujuy',
+  applicationName: 'CondorJUY',
+  title: 'CondorJUY - Servicios esenciales en Jujuy',
   description: 'Mapa interactivo de servicios esenciales en Jujuy: farmacias de turno, nodos sanitarios, CAPS, CIC, puestos de salud y cuarteles de bomberos.',
   keywords: ['farmacias de turno', 'centros de salud', 'CAPS', 'hospital', 'bomberos', 'emergencias', 'Jujuy', 'Argentina'],
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'SaludJUY',
+    title: 'CondorJUY',
   },
 }
 

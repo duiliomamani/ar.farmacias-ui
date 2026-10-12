@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SaludJUY — Farmacias, Centros de Salud y Bomberos en Jujuy',
-    short_name: 'SaludJUY',
+    name: 'CondorJUY — Servicios esenciales en Jujuy',
+    short_name: 'CondorJUY',
     description: 'Farmacias de turno, centros de salud (CAPS, Nodos, CIC) y cuarteles de bomberos en Jujuy.',
     id: '/',
     start_url: '/',
