@@ -25,7 +25,7 @@ pnpm install
 Crear `.env.local`:
 
 ```env
-FARMACIAS_API_URL=http://localhost:5001
+CONDORJUY_API_URL=http://localhost:5001
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=...
 ```
 
