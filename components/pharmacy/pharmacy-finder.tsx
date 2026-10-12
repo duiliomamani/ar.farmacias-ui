@@ -329,33 +329,15 @@ export function PharmacyFinder() {
     return list
   }, [enrichedPoliceStations, searchMode, selectedCity, userLocation, radius])
 
-  // Available Cities for the Active Tab (with real-time count badges)
+  // Available Cities for the Active Tab
   const availableCitiesForActiveTab = useMemo(() => {
     if (activeTab === 'pharmacies') {
-      const countsMap = new Map<string, number>()
-      groupedPharmacies.forEach((pharmacy) => {
-        const canonical = normalizeLocalityName(pharmacy.city || '')
-        countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
-      })
-
-      return JUJUY_CANONICAL_CITIES.map((name) => ({
-        name,
-        count: countsMap.get(name),
-      }))
+      return JUJUY_CANONICAL_CITIES
     }
 
     if (activeTab === 'health') {
-      const countsMap = new Map<string, number>()
-      rawHealthFacilities.forEach((facility) => {
-        const canonical = normalizeLocalityName(facility.locality)
-        countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
-      })
-
-      const list: Array<{ name: string; count: number }> = []
-      countsMap.forEach((count, name) => {
-        list.push({ name, count })
-      })
-      return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+      return [...new Set(rawHealthFacilities.map((f) => normalizeLocalityName(f.locality)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es'))
     }
 
     if (activeTab === 'fire') {

@@ -112,16 +112,11 @@ export function SearchControls({
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
                 <SelectItem value="TODAS">
-                  Todas las localidades ({uniqueOptions.reduce((acc, curr) => acc + (curr.count || 0), 0) || 'Todas'})
+                  Todas las localidades
                 </SelectItem>
-                {uniqueOptions.map((opt) => (
-                  <SelectItem key={opt.name} value={opt.name}>
-                    <span className="flex items-center justify-between w-full gap-2">
-                      <span>{opt.name}</span>
-                      {opt.count !== undefined && (
-                        <span className="text-[10px] text-muted-foreground font-semibold">({opt.count})</span>
-                      )}
-                    </span>
+                {uniqueOptions.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
                   </SelectItem>
                 ))}
               </SelectContent>
