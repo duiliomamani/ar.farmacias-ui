@@ -598,8 +598,8 @@ export function PharmacyFinder() {
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="h-10 w-10 shrink-0" aria-hidden="true">
             <Image
-              src="/farmajuy-icon.png"
-              alt="Logo SaludJUY"
+              src="/condorjuy-icon.png"
+              alt="Logo CondorJUY"
               width={40}
               height={40}
               priority
@@ -609,7 +609,7 @@ export function PharmacyFinder() {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h1 className="text-base sm:text-lg font-heading font-black text-foreground tracking-tight leading-none truncate">
-                SaludJUY
+                CondorJUY
               </h1>
               <span className="hidden sm:inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
                 Jujuy Esencial

@@ -1,6 +1,6 @@
-# FarmaJUY — frontend
+# CondorJUY — frontend
 
-Frontend Next.js 16 para consultar farmacias de turno y permanentes de Jujuy.
+Frontend Next.js 16 para consultar servicios esenciales de Jujuy.
 
 La documentación completa de arquitectura y flujos está en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 

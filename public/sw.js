@@ -1,7 +1,7 @@
-const CACHE_VERSION = 'farmajuy-v1'
+const CACHE_VERSION = 'condorjuy-v1'
 const DATA_CACHE = `${CACHE_VERSION}-data`
 const APP_CACHE = `${CACHE_VERSION}-app`
-const APP_SHELL = ['/', '/manifest.webmanifest', '/farmajuy-icon.png', '/icon-192x192.png', '/icon-512x512.png']
+const APP_SHELL = ['/', '/manifest.webmanifest', '/condorjuy-icon.png', '/icon-192x192.png', '/icon-512x512.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(APP_CACHE).then((cache) => cache.addAll(APP_SHELL)))
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (event) => {
           return response
         })
         .catch(async () => (await caches.match('/')) || new Response(
-          '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>FarmaJUY sin conexión</title><body><main><h1>Estás sin conexión</h1><p>Abrí FarmaJUY una vez con internet para guardar los últimos turnos.</p></main></body></html>',
+          '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>CondorJUY sin conexión</title><body><main><h1>Estás sin conexión</h1><p>Abrí CondorJUY una vez con internet para guardar los últimos turnos.</p></main></body></html>',
           { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
         )),
     )
