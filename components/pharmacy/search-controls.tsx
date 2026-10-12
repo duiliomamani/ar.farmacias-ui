@@ -1,6 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
 import { CalendarDays, Crosshair, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,17 +46,25 @@ export function SearchControls({
   activeTab = 'pharmacies',
   className,
 }: SearchControlsProps) {
-  // Normalizar opciones de localidad con formato Capitalize y deduplicar
-  const uniqueOptions = useMemo(() => {
-    const names = cities.map((c) => {
-      if (typeof c === 'string') {
-        return normalizeLocalityName(c)
-      }
-      return normalizeLocalityName(c.name)
-    }).filter(Boolean)
+  // Normalizar opciones de localidad con formato Capitalize y conteos
+  const normalizedOptions: LocalityOption[] = cities.map((c) => {
+    if (typeof c === 'string') {
+      return { name: normalizeLocalityName(c) }
+    }
+    return { name: normalizeLocalityName(c.name), count: c.count }
+  })
 
-    return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'es'))
-  }, [cities])
+  // Deduplicar si diferentes nombres originales se mapearon a la misma cabecera (ej: Barrio El Milagro -> Monterrico)
+  const uniqueOptionsMap = new Map<string, LocalityOption>()
+  normalizedOptions.forEach((opt) => {
+    const existing = uniqueOptionsMap.get(opt.name)
+    if (existing) {
+      existing.count = (existing.count || 0) + (opt.count || 0)
+    } else {
+      uniqueOptionsMap.set(opt.name, { ...opt })
+    }
+  })
+  const uniqueOptions = [...uniqueOptionsMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
 
   const currentNormalizedCity = selectedCity ? normalizeLocalityName(selectedCity) : ''
 

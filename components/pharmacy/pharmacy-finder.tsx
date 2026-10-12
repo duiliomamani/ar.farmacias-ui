@@ -341,14 +341,32 @@ export function PharmacyFinder() {
     }
 
     if (activeTab === 'fire') {
-      return [...new Set(rawFireStations.map((s) => normalizeLocalityName(s.locality)).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, 'es'))
+      const countsMap = new Map<string, number>()
+      rawFireStations.forEach((station) => {
+        const canonical = normalizeLocalityName(station.locality)
+        countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
+      })
+
+      const list: Array<{ name: string; count: number }> = []
+      countsMap.forEach((count, name) => {
+        list.push({ name, count })
+      })
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
     }
 
     // activeTab === 'police'
-    return [...new Set(rawPoliceStations.map((s) => normalizeLocalityName(s.locality)).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, 'es'))
-  }, [activeTab, rawHealthFacilities, rawFireStations, rawPoliceStations])
+    const countsMap = new Map<string, number>()
+    rawPoliceStations.forEach((station) => {
+      const canonical = normalizeLocalityName(station.locality)
+      countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
+    })
+
+    const list: Array<{ name: string; count: number }> = []
+    countsMap.forEach((count, name) => {
+      list.push({ name, count })
+    })
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  }, [activeTab, groupedPharmacies, rawHealthFacilities, rawFireStations, rawPoliceStations])
 
   const isLoading = isDataLoading || isLocating || (activeTab === 'health' && isHealthLoading) || (activeTab === 'fire' && isFireLoading) || (activeTab === 'police' && isPoliceLoading)
 
