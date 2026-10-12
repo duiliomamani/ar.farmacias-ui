@@ -59,3 +59,25 @@ export function getEffectiveDutyDate(): Date {
 
   return effectiveDate
 }
+
+/**
+ * Formats a duration in minutes into a human-readable string.
+ * When it exceeds 1 hour (>= 60 min), converts to "X hs Y min" or "X hs".
+ * Examples:
+ * - 45 min -> "45 min"
+ * - 60 min -> "1 hs"
+ * - 80 min -> "1 hs 20 min"
+ * - 666 min -> "11 hs 6 min"
+ */
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} min`
+  }
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+
+  if (remainingMinutes === 0) {
+    return `${hours} hs`
+  }
+  return `${hours} hs ${remainingMinutes} min`
+}

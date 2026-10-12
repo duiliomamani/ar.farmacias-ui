@@ -3,8 +3,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
-import { cn } from '@/lib/utils'
-import { Bike, Car, CheckCircle2, AlertTriangle, ExternalLink, Footprints, Navigation, X, ChevronDown, ChevronUp, Star } from 'lucide-react'
+import type { FireStation } from '@/lib/fire-station-data'
+import { IDEJUY_FIRE_STATIONS_URL } from '@/lib/fire-station-data'
+import type { HealthFacility, HealthFacilityType } from '@/lib/health-facility-data'
+import { getHealthDatasetUrl, getHealthDatasetDescription, IDEJUY_HEALTH_MAP_URL } from '@/lib/health-facility-data'
+import { toTitleCase } from '@/lib/locality-utils'
+import { cn, formatDuration } from '@/lib/utils'
+import {
+  Bike,
+  Building2,
+  Car,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  Flame,
+  Footprints,
+  HeartPulse,
+  Hospital,
+  Navigation,
+  Pill,
+  Phone,
+  ShieldAlert,
+  Stethoscope,
+  Users,
+  Cross,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Star,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CommunityReportActions } from './community-report-actions'
@@ -121,15 +148,15 @@ function RoutingControl({
   return null
 }
 
-function FitPharmacyBounds({ pharmacies, enabled }: { pharmacies: Pharmacy[]; enabled: boolean }) {
+function FitResultBounds({ points, enabled }: { points: Array<{ lat: number; lng: number }>; enabled: boolean }) {
   const map = require('react-leaflet').useMap()
 
   useEffect(() => {
-    if (!enabled || pharmacies.length === 0) return
+    if (!enabled || points.length === 0) return
     const L = require('leaflet')
-    const bounds = L.latLngBounds(pharmacies.map((pharmacy) => [pharmacy.lat, pharmacy.lng]))
+    const bounds = L.latLngBounds(points.map((point) => [point.lat, point.lng]))
     map.fitBounds(bounds, { padding: [36, 36], maxZoom: 14 })
-  }, [enabled, pharmacies, map])
+  }, [enabled, points, map])
 
   return null
 }
@@ -150,11 +177,17 @@ interface RouteSummary {
 
 interface PharmacyMapProps {
   pharmacies: Pharmacy[]
+  healthFacilities?: HealthFacility[]
+  fireStations?: FireStation[]
   center: [number, number]
   selectedPharmacy?: Pharmacy | null
   onSelectPharmacy?: (pharmacy: Pharmacy | null) => void
+  selectedHealthFacility?: HealthFacility | null
+  onSelectHealthFacility?: (facility: HealthFacility | null) => void
+  selectedFireStation?: FireStation | null
+  onSelectFireStation?: (station: FireStation | null) => void
   userLocation?: [number, number] | null
-  fitToPharmacies?: boolean
+  fitToResults?: boolean
   travelMode: TravelMode
   onTravelModeChange: (mode: TravelMode) => void
   favoriteIds?: string[]
@@ -164,11 +197,17 @@ interface PharmacyMapProps {
 
 function PharmacyMapContent({
   pharmacies,
+  healthFacilities = [],
+  fireStations = [],
   center,
   selectedPharmacy,
   onSelectPharmacy,
+  selectedHealthFacility: propSelectedHealthFacility,
+  onSelectHealthFacility,
+  selectedFireStation: propSelectedFireStation,
+  onSelectFireStation,
   userLocation,
-  fitToPharmacies = false,
+  fitToResults = false,
   travelMode,
   onTravelModeChange,
   favoriteIds = [],
@@ -178,6 +217,51 @@ function PharmacyMapContent({
   const mapRef = useRef<L.Map | null>(null)
   const [routeSummary, setRouteSummary] = useState<RouteSummary | null>(null)
   const [showInstructions, setShowInstructions] = useState(false)
+  const [showPharmacies, setShowPharmacies] = useState(true)
+  const [showHealthFacilities, setShowHealthFacilities] = useState(true)
+  const [showFireStations, setShowFireStations] = useState(true)
+  const [internalHealthFacility, setInternalHealthFacility] = useState<HealthFacility | null>(null)
+  const [internalFireStation, setInternalFireStation] = useState<FireStation | null>(null)
+
+  const selectedHealthFacility = propSelectedHealthFacility !== undefined ? propSelectedHealthFacility : internalHealthFacility
+  const selectedFireStation = propSelectedFireStation !== undefined ? propSelectedFireStation : internalFireStation
+
+  const updateSelectedHealthFacility = (facility: HealthFacility | null) => {
+    setInternalHealthFacility(facility)
+    onSelectHealthFacility?.(facility)
+  }
+
+  const updateSelectedFireStation = (station: FireStation | null) => {
+    setInternalFireStation(station)
+    onSelectFireStation?.(station)
+  }
+
+  const visibleResults = useMemo(() => [
+    ...(showPharmacies ? pharmacies : []),
+    ...(showHealthFacilities ? healthFacilities : []),
+    ...(showFireStations ? fireStations : []),
+  ], [showPharmacies, pharmacies, showHealthFacilities, healthFacilities, showFireStations, fireStations])
+
+  useEffect(() => {
+    if (selectedHealthFacility && !healthFacilities.some((facility) => facility.id === selectedHealthFacility.id)) {
+      updateSelectedHealthFacility(null)
+    }
+    if (selectedFireStation && !fireStations.some((station) => station.id === selectedFireStation.id)) {
+      updateSelectedFireStation(null)
+    }
+  }, [healthFacilities, fireStations, selectedHealthFacility, selectedFireStation])
+
+  useEffect(() => {
+    if (selectedHealthFacility && mapRef.current) {
+      mapRef.current.setView([selectedHealthFacility.lat, selectedHealthFacility.lng], Math.max(mapRef.current.getZoom(), 15))
+    }
+  }, [selectedHealthFacility])
+
+  useEffect(() => {
+    if (selectedFireStation && mapRef.current) {
+      mapRef.current.setView([selectedFireStation.lat, selectedFireStation.lng], Math.max(mapRef.current.getZoom(), 15))
+    }
+  }, [selectedFireStation])
 
   // Some official records share the same geocoded point. Keep their real
   // coordinates for routing, but fan the visual markers out so none is hidden.
@@ -213,6 +297,8 @@ function PharmacyMapContent({
   useEffect(() => {
     if (mapRef.current && selectedPharmacy) {
       mapRef.current.setView([selectedPharmacy.lat, selectedPharmacy.lng], 16)
+      updateSelectedHealthFacility(null)
+      updateSelectedFireStation(null)
     }
     setShowInstructions(false)
   }, [selectedPharmacy])
@@ -232,137 +318,148 @@ function PharmacyMapContent({
   // Create custom icons based on center type and status
   const createCustomIcon = (pharmacy: Pharmacy, isSelected: boolean) => {
     if (typeof window === 'undefined') return undefined
-    
-    const L = require('leaflet')
-    
-    const size = isSelected ? 48 : 40
-    let color = '#ef4444' // Default Red (Closed)
-    let iconPath = '<path d="M18 6 6 18M6 6l12 12"/>' // X icon for closed
-    let extraClass = ''
 
-    // Community Report Logic for Icon
-    const latestReport = pharmacy.communityReports?.[0];
-    let badgeHtml = '';
-    
-    if (latestReport && !latestReport.isOnDuty) {
-      // Reported closed recently
-      badgeHtml = `
-        <div style="
-          position: absolute; 
-          top: -4px; 
-          right: -4px; 
-          background: #f97316; 
-          border: 1.5px solid white; 
-          border-radius: 50%; 
-          width: 18px; 
-          height: 18px; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          z-index: 10; 
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          animation: pulse-danger 2s infinite;
-        ">
-          <span style="color: white; font-size: 11px; font-weight: 900; line-height: 1;">!</span>
-        </div>
-      `;
-      extraClass += ' reported-closed-glow';
-    } else {
-      const recentVerifiedReport = pharmacy.communityReports?.find(
-        (r) => r.isOnDuty && (Date.now() - new Date(r.createdAt).getTime()) < 2 * 60 * 60 * 1000
-      );
-      if (recentVerifiedReport) {
-        // Confirmed open recently
-        badgeHtml = `
-          <div style="
-            position: absolute; 
-            top: -4px; 
-            right: -4px; 
-            background: #22c55e; 
-            border: 1.5px solid white; 
-            border-radius: 50%; 
-            width: 18px; 
-            height: 18px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            z-index: 10; 
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          ">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-        `;
-      }
-    }
+    const L = require('leaflet')
+
+    const width = isSelected ? 42 : 34
+    const height = isSelected ? 52 : 44
+
+    // Status colors
+    let pinColor = '#475569' // Closed: slate-600
+    let crossOpacity = 0.75
+    let extraClass = ''
+    let statusBadge = ''
 
     if (pharmacy.isOnDuty) {
-      color = '#22c55e' // Green (Open)
-      iconPath = '<path d="M12 2v20M2 12h20"/>' // Cross
+      pinColor = '#16a34a' // Green
+      crossOpacity = 1
+      extraClass += ' on-duty-marker'
     }
 
     if (pharmacy.isVoluntary) {
-      color = '#2563eb' // Blue (Voluntary, availability not guaranteed)
-      iconPath = '<path d="M12 2v20M2 12h20"/>' // Cross
+      pinColor = '#2563eb' // Blue
+      crossOpacity = 1
       extraClass += ' voluntary-marker'
     }
 
-    if (pharmacy.verificationStatus === 'community_verified') {
-      color = '#3b82f6' // Blue
-      iconPath = '<path d="M20 6 9 17l-5-5"/>' // Check icon
-    } else if (pharmacy.verificationStatus === 'pending') {
-      color = '#f59e0b' // Amber
-      iconPath = '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
-    }
-
     if (pharmacy.isPermanentlyOnDuty && pharmacy.isOnDuty) {
-      color = '#0284c7'
-      iconPath = '<path d="M12 3 5 6v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>'
+      pinColor = '#0284c7' // Electric Sky Blue
+      crossOpacity = 1
+      statusBadge = `
+        <div style="
+          position: absolute;
+          top: -4px;
+          right: -6px;
+          background: #0284c7;
+          color: #ffffff;
+          font-size: 8px;
+          font-weight: 900;
+          padding: 1px 4px;
+          border-radius: 999px;
+          border: 1.5px solid white;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+          line-height: 1.1;
+          letter-spacing: 0.3px;
+        ">24h</div>
+      `
     }
 
     if (pharmacy.activityLevel > 70) {
       extraClass += ' high-activity-aura'
     }
 
-    if (pharmacy.isOnDuty) {
-      extraClass += ' on-duty-marker'
+    if (isSelected) {
+      extraClass += ' is-selected'
     }
-    
+
+    // Community Report Logic for Icon
+    const latestReport = pharmacy.communityReports?.[0]
+
+    if (latestReport && !latestReport.isOnDuty) {
+      statusBadge = `
+        <div style="
+          position: absolute; 
+          top: -4px; 
+          right: -6px; 
+          background: #ea580c; 
+          color: white; 
+          border: 1.5px solid white; 
+          border-radius: 50%; 
+          width: 17px; 
+          height: 17px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          font-size: 10px; 
+          font-weight: 900; 
+          z-index: 10; 
+          box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+          animation: pulse-danger 2s infinite;
+        ">!</div>
+      `
+      extraClass += ' reported-closed-glow'
+    } else {
+      const recentVerifiedReport = pharmacy.communityReports?.find(
+        (r) => r.isOnDuty && (Date.now() - new Date(r.createdAt).getTime()) < 2 * 60 * 60 * 1000
+      )
+      if (recentVerifiedReport) {
+        statusBadge = `
+          <div style="
+            position: absolute; 
+            top: -4px; 
+            right: -6px; 
+            background: #16a34a; 
+            border: 1.5px solid white; 
+            border-radius: 50%; 
+            width: 17px; 
+            height: 17px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 10; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+          ">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+        `
+      }
+    }
+
     return L.divIcon({
-      className: `custom-marker ${extraClass}`,
+      className: `pharmacy-marker ${extraClass}`,
       html: `
         <div style="
-          width: ${size}px;
-          height: ${size}px;
-          background-color: ${color};
-          border: 2px solid oklch(1 0 0 / 0.5);
-          border-radius: 50%;
-          box-shadow: 0 4px 14px oklch(0.1 0.05 240 / 0.4);
+          width: ${width}px;
+          height: ${height}px;
           display: flex;
           align-items: center;
           justify-content: center;
-          transform: ${isSelected ? 'scale(1.15)' : 'scale(1)'};
-          transition: transform 0.2s ease-out;
           position: relative;
-          z-index: 1;
+          transform: ${isSelected ? 'scale(1.15) translateY(-4px)' : 'scale(1)'};
+          transition: transform 0.2s ease-out;
+          filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
         ">
-          <svg width="${size * 0.5}" height="${size * 0.5}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            ${iconPath}
+          <svg width="${width}" height="${height}" viewBox="0 0 34 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 43C17 43 31.5 28.5 31.5 16C31.5 8 25 1.5 17 1.5C9 1.5 2.5 8 2.5 16C2.5 28.5 17 43 17 43Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="17" cy="16" r="11" fill="rgba(255,255,255,0.18)"/>
+            <rect x="14.2" y="8" width="5.6" height="16" rx="2" fill="#ffffff" fill-opacity="${crossOpacity}"/>
+            <rect x="9" y="13.2" width="16" height="5.6" rx="2" fill="#ffffff" fill-opacity="${crossOpacity}"/>
           </svg>
-          ${badgeHtml}
+          ${statusBadge}
         </div>
       `,
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
-      popupAnchor: [0, -size / 2],
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height - 1],
+      popupAnchor: [0, -height],
     })
   }
 
   const createUserLocationIcon = () => {
     if (typeof window === 'undefined') return undefined
     const L = require('leaflet')
-    
+
     return L.divIcon({
       className: 'user-location-marker',
       html: `
@@ -374,6 +471,168 @@ function PharmacyMapContent({
       iconSize: [32, 32],
       iconAnchor: [16, 16],
     })
+  }
+
+  const createHealthFacilityIcon = (facility: HealthFacility, isSelected: boolean) => {
+    if (typeof window === 'undefined') return undefined
+    const L = require('leaflet')
+    const width = isSelected ? 42 : 34
+    const height = isSelected ? 52 : 44
+
+    let pinColor = '#dc2626'
+    let tag = 'SALUD'
+    let innerSvg = ''
+
+    switch (facility.type) {
+      case 'NODO SANITARIO':
+        pinColor = '#dc2626' // Red
+        tag = 'NODO'
+        innerSvg = `
+          <rect x="9.5" y="8.5" width="15" height="15" rx="3" fill="rgba(255,255,255,0.2)"/>
+          <path d="M12.5 11v10M21.5 11v10M12.5 16h9" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
+        `
+        break
+      case 'CAPS':
+        pinColor = '#e11d48' // Rose
+        tag = 'CAPS'
+        innerSvg = `
+          <path d="M17 22.5s-6.2-4.2-6.2-8.2a3.8 3.8 0 0 1 6.2-3.1 3.8 3.8 0 0 1 6.2 3.1c0 4-6.2 8.2-6.2 8.2z" fill="#ffffff"/>
+          <path d="M17 11.8v6.4M13.8 15h6.4" stroke="#e11d48" stroke-width="2.2" stroke-linecap="round"/>
+        `
+        break
+      case 'CIC':
+        pinColor = '#0d9488' // Teal
+        tag = 'CIC'
+        innerSvg = `
+          <circle cx="14" cy="11.5" r="2.2" fill="#ffffff"/>
+          <circle cx="20" cy="13" r="1.8" fill="#ffffff"/>
+          <path d="M10 20v-1a4 4 0 0 1 7.2-1.8" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round"/>
+          <path d="M16 20v-.8a3 3 0 0 1 5.2-1.5" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M17 9v2.5M15.8 10.2h2.4" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+        `
+        break
+      case 'PUESTO DE SALUD':
+      default:
+        pinColor = '#ea580c' // Coral
+        tag = 'PUESTO'
+        innerSvg = `
+          <rect x="10" y="11.5" width="14" height="10" rx="2.5" fill="#ffffff"/>
+          <path d="M14 11.5V10a1.2 1.2 0 0 1 1.2-1.2h3.6a1.2 1.2 0 0 1 1.2 1.2v1.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M17 13.5v6M14 16.5h6" stroke="#ea580c" stroke-width="2.2" stroke-linecap="round"/>
+        `
+        break
+    }
+
+    return L.divIcon({
+      className: 'health-facility-marker',
+      html: `
+        <div style="
+          width: ${width}px;
+          height: ${height}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          transform: ${isSelected ? 'scale(1.15) translateY(-4px)' : 'scale(1)'};
+          transition: transform 0.2s ease-out;
+          filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
+        ">
+          <div style="
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 8px;
+            font-weight: 900;
+            padding: 1px 4.5px;
+            border-radius: 999px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+            z-index: 5;
+          ">${tag}</div>
+          <svg width="${width}" height="${height}" viewBox="0 0 34 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 43C17 43 31.5 28.5 31.5 16C31.5 8 25 1.5 17 1.5C9 1.5 2.5 8 2.5 16C2.5 28.5 17 43 17 43Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="17" cy="16" r="11" fill="rgba(255,255,255,0.18)"/>
+            ${innerSvg}
+          </svg>
+        </div>
+      `,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height - 1],
+      popupAnchor: [0, -height],
+    })
+  }
+
+  const handleSelectHealthFacility = (facility: HealthFacility) => {
+    onSelectPharmacy?.(null)
+    updateSelectedFireStation(null)
+    updateSelectedHealthFacility(facility)
+    mapRef.current?.setView([facility.lat, facility.lng], Math.max(mapRef.current.getZoom(), 15))
+  }
+
+  const createFireStationIcon = (station: FireStation, isSelected: boolean) => {
+    if (typeof window === 'undefined') return undefined
+    const L = require('leaflet')
+    const width = isSelected ? 42 : 34
+    const height = isSelected ? 52 : 44
+    const pinColor = '#ea580c'
+
+    return L.divIcon({
+      className: 'fire-station-marker',
+      html: `
+        <div style="
+          width: ${width}px;
+          height: ${height}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          transform: ${isSelected ? 'scale(1.15) translateY(-4px)' : 'scale(1)'};
+          transition: transform 0.2s ease-out;
+          filter: drop-shadow(0 4px 10px rgba(194, 65, 12, 0.45));
+        ">
+          <div style="
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #7c2d12;
+            color: #ffedd5;
+            font-size: 8px;
+            font-weight: 900;
+            padding: 1px 4.5px;
+            border-radius: 999px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+            z-index: 5;
+          ">BOMBEROS</div>
+          <svg width="${width}" height="${height}" viewBox="0 0 34 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 43C17 43 31.5 28.5 31.5 16C31.5 8 25 1.5 17 1.5C9 1.5 2.5 8 2.5 16C2.5 28.5 17 43 17 43Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="17" cy="16" r="11" fill="rgba(255,255,255,0.18)"/>
+            <path d="M17 8.5l6 2.8v5c0 4.2-2.7 7.2-6 8.2-3.3-1-6-4-6-8.2v-5l6-2.8z" fill="#ffffff"/>
+            <path d="M17 11.5c1.4 1.8 2.2 3.2 2.2 4.5 0 1.2-.9 2.2-2.2 2.2s-2.2-1-2.2-2.2c0-1.1.8-2 1.4-2.8.3.8.7 1.3 1.2 1.3.4 0 .7-.3.7-.7 0-.7-.5-1.4-1.1-2.3z" fill="#ea580c"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height - 1],
+      popupAnchor: [0, -height],
+    })
+  }
+
+  const handleSelectFireStation = (station: FireStation) => {
+    onSelectPharmacy?.(null)
+    updateSelectedHealthFacility(null)
+    updateSelectedFireStation(station)
+    mapRef.current?.setView([station.lat, station.lng], Math.max(mapRef.current.getZoom(), 15))
   }
 
   const handleNavigate = (pharmacy: Pharmacy) => {
@@ -403,7 +662,7 @@ function PharmacyMapContent({
           maxZoom={20}
         />
 
-        <FitPharmacyBounds pharmacies={pharmacies} enabled={fitToPharmacies} />
+        <FitResultBounds points={visibleResults} enabled={fitToResults} />
 
         {userLocation && selectedPharmacy && (
           <RoutingControl
@@ -418,17 +677,213 @@ function PharmacyMapContent({
           <Marker position={userLocation} icon={createUserLocationIcon()} zIndexOffset={1000} />
         )}
 
-        {pharmacies.map((pharmacy) => (
+        {showHealthFacilities && healthFacilities.map((facility) => (
+          <Marker
+            key={facility.id}
+            position={[facility.lat, facility.lng]}
+            icon={createHealthFacilityIcon(facility, selectedHealthFacility?.id === facility.id)}
+            zIndexOffset={selectedHealthFacility?.id === facility.id ? 800 : 150}
+            alt={`Centro de salud: ${facility.name}`}
+            title={facility.name}
+            eventHandlers={{ click: () => handleSelectHealthFacility(facility) }}
+          />
+        ))}
+
+        {showFireStations && fireStations.map((station) => (
+          <Marker
+            key={station.id}
+            position={[station.lat, station.lng]}
+            icon={createFireStationIcon(station, selectedFireStation?.id === station.id)}
+            zIndexOffset={selectedFireStation?.id === station.id ? 800 : 200}
+            alt={`Cuartel de bomberos: ${station.name}`}
+            title={station.name}
+            eventHandlers={{ click: () => handleSelectFireStation(station) }}
+          />
+        ))}
+
+        {showPharmacies && pharmacies.map((pharmacy) => (
           <Marker
             key={pharmacy.id}
             position={displayPositions.get(pharmacy.id) || [pharmacy.lat, pharmacy.lng]}
             icon={createCustomIcon(pharmacy, selectedPharmacy?.id === pharmacy.id)}
+            zIndexOffset={selectedPharmacy?.id === pharmacy.id ? 900 : 300}
             eventHandlers={{
-              click: () => onSelectPharmacy?.(pharmacy),
+              click: () => {
+                updateSelectedHealthFacility(null)
+                updateSelectedFireStation(null)
+                onSelectPharmacy?.(pharmacy)
+              },
             }}
           />
         ))}
       </MapContainer>
+      <div className="absolute inset-x-3 top-[72px] z-[400] md:right-auto md:top-3 md:w-[370px]">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border bg-card/95 p-1.5 shadow-lg backdrop-blur-md" aria-label="Filtrar puntos del mapa">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showPharmacies ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-extrabold' : 'text-muted-foreground opacity-65')}
+            onClick={() => {
+              setShowPharmacies((visible) => !visible)
+              if (showPharmacies) onSelectPharmacy?.(null)
+            }}
+            aria-pressed={showPharmacies}
+          >
+            <Pill className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="truncate">Farmacias</span>
+            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px]">{pharmacies.length}</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showHealthFacilities ? 'bg-red-500/10 text-red-700 dark:text-red-300 font-extrabold' : 'text-muted-foreground opacity-65')}
+            onClick={() => {
+              setShowHealthFacilities((visible) => !visible)
+              if (showHealthFacilities) updateSelectedHealthFacility(null)
+            }}
+            aria-pressed={showHealthFacilities}
+          >
+            <HeartPulse className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+            <span className="truncate">Salud</span>
+            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px]">{healthFacilities.length}</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showFireStations ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300 font-extrabold' : 'text-muted-foreground opacity-65')}
+            onClick={() => {
+              setShowFireStations((visible) => !visible)
+              if (showFireStations) updateSelectedFireStation(null)
+            }}
+            aria-pressed={showFireStations}
+          >
+            <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+            <span className="truncate">Bomberos</span>
+            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px]">{fireStations.length}</span>
+          </Button>
+        </div>
+      </div>
+      {selectedHealthFacility && (
+        <div className="absolute inset-x-3 top-[128px] z-[500] rounded-2xl border border-red-500/20 bg-card/98 p-4 shadow-2xl backdrop-blur-md md:inset-x-auto md:right-4 md:top-4 md:w-[360px]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/60" aria-hidden="true">
+              {selectedHealthFacility.type === 'NODO SANITARIO' ? (
+                <Hospital className="h-6 w-6 text-red-600 dark:text-red-400" />
+              ) : selectedHealthFacility.type === 'CAPS' ? (
+                <HeartPulse className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              ) : selectedHealthFacility.type === 'CIC' ? (
+                <Users className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+              ) : (
+                <Cross className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <Badge className={cn(
+                'mb-1 text-[9px] font-black uppercase tracking-widest text-white',
+                selectedHealthFacility.type === 'NODO SANITARIO' ? 'bg-red-600' :
+                selectedHealthFacility.type === 'CAPS' ? 'bg-rose-600' :
+                selectedHealthFacility.type === 'CIC' ? 'bg-teal-600' : 'bg-orange-600'
+              )}>
+                {selectedHealthFacility.type}
+              </Badge>
+              <h3 className="font-heading text-sm font-black uppercase leading-tight tracking-tight text-foreground">
+                {toTitleCase(selectedHealthFacility.name)}
+              </h3>
+              <p className="mt-0.5 text-[11px] leading-snug font-medium text-foreground/80">
+                {getHealthDatasetDescription(selectedHealthFacility.type)}
+              </p>
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                {selectedHealthFacility.locality} · {selectedHealthFacility.authority} · Jurisdicción {selectedHealthFacility.jurisdiction.toLocaleLowerCase('es')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 rounded-full"
+              onClick={() => updateSelectedHealthFacility(null)}
+              aria-label="Cerrar información del centro de salud"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              type="button"
+              className="h-10 flex-1 gap-2 rounded-xl bg-red-600 text-xs font-black uppercase tracking-wider text-white hover:bg-red-700 shadow-sm"
+              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedHealthFacility.lat},${selectedHealthFacility.lng}`, '_blank', 'noopener,noreferrer')}
+            >
+              <Navigation className="h-4 w-4" /> Cómo llegar
+            </Button>
+            <Button asChild type="button" size="icon" variant="outline" className="h-10 w-10 rounded-xl" title="Ver fuente oficial en IDEJuy">
+              <a
+                href={selectedHealthFacility.datasetUrl || getHealthDatasetUrl(selectedHealthFacility.type, selectedHealthFacility.datasetId)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Ver datos en IDEJuy"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Fuente oficial: IDEJuy {selectedHealthFacility.datasetId ? `(Dataset #${selectedHealthFacility.datasetId})` : ''} · Ministerio de Salud de Jujuy
+          </p>
+        </div>
+      )}
+      {selectedFireStation && (
+        <div className="absolute inset-x-3 top-[128px] z-[500] rounded-2xl border border-orange-500/25 bg-card/98 p-4 shadow-2xl backdrop-blur-md md:inset-x-auto md:right-4 md:top-4 md:w-[360px]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-500/30 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300" aria-hidden="true">
+              <Flame className="h-6 w-6 text-orange-600 animate-pulse" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Badge className="mb-1 bg-orange-600 text-[9px] font-black uppercase tracking-widest text-white">
+                {selectedFireStation.type}
+              </Badge>
+              <h3 className="font-heading text-sm font-black uppercase leading-tight tracking-tight text-foreground">
+                {toTitleCase(selectedFireStation.name)}
+              </h3>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                {[selectedFireStation.description, selectedFireStation.authority].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 rounded-full"
+              onClick={() => updateSelectedFireStation(null)}
+              aria-label="Cerrar información del cuartel de bomberos"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              type="button"
+              className="h-10 flex-1 gap-2 rounded-xl bg-orange-600 text-xs font-black uppercase tracking-wider text-white hover:bg-orange-700 shadow-sm"
+              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedFireStation.lat},${selectedFireStation.lng}`, '_blank', 'noopener,noreferrer')}
+            >
+              <Navigation className="h-4 w-4" /> Cómo llegar
+            </Button>
+            <Button asChild type="button" variant="outline" className="h-10 gap-1.5 rounded-xl border-orange-500/30 text-orange-700 hover:bg-orange-500/10 dark:text-orange-300 font-bold text-xs" title="Llamar al 100 de Bomberos">
+              <a href="tel:100" aria-label="Llamar al 100 de Bomberos">
+                <Phone className="h-4 w-4" /> 100
+              </a>
+            </Button>
+            <Button asChild size="icon" variant="outline" className="h-10 w-10 rounded-xl" title="Ver fuente oficial en IDEJuy">
+              <a href={IDEJUY_FIRE_STATIONS_URL} target="_blank" rel="noreferrer" aria-label="Ver cuarteles en IDEJuy">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">Fuente: IDEJuy (Dataset #151) · Ministerio de Seguridad de Jujuy</p>
+        </div>
+      )}
       {selectedPharmacy && (
         <div className="absolute bottom-3 inset-x-3 sm:bottom-auto sm:inset-x-auto sm:right-4 sm:top-4 z-[500] sm:w-[380px] max-h-[70dvh] overflow-y-auto rounded-2xl border bg-card/98 p-4 shadow-2xl backdrop-blur-md flex flex-col">
           <div className="flex items-start justify-between gap-3">
@@ -461,11 +916,11 @@ function PharmacyMapContent({
                   </span>
                 )}
               </div>
-              <h3 className="text-base font-heading font-black text-foreground truncate uppercase tracking-tight">
-                {selectedPharmacy.name}
+              <h3 className="text-base font-heading font-black text-foreground truncate tracking-tight">
+                {toTitleCase(selectedPharmacy.name)}
               </h3>
               <p className="text-xs text-muted-foreground truncate">
-                {selectedPharmacy.address}
+                {toTitleCase(selectedPharmacy.address)}
               </p>
               {selectedPharmacy.openingHours && (
                 <p className="text-[11px] text-muted-foreground/90 font-medium truncate mt-0.5">
@@ -533,7 +988,7 @@ function PharmacyMapContent({
               <div className="mt-2.5 flex items-center justify-between">
                 <div>
                   <span className="text-base font-black text-foreground">
-                    {routeSummary.durationMinutes} min
+                    {formatDuration(routeSummary.durationMinutes)}
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground ml-1.5">
                     ({routeSummary.distanceKm.toFixed(1)} km)

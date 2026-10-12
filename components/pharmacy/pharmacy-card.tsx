@@ -8,6 +8,7 @@ import type { Pharmacy } from '@/lib/pharmacy-data'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { CommunityReportActions } from './community-report-actions'
+import { toTitleCase } from '@/lib/locality-utils'
 
 interface PharmacyCardProps {
   pharmacy: Pharmacy
@@ -88,8 +89,8 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect, isF
           {/* Header Area */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex flex-col gap-1 flex-1 min-w-0">
-              <h3 className="font-heading font-black text-foreground leading-snug text-sm tracking-tight uppercase group-hover:text-primary transition-colors line-clamp-1">
-                {pharmacy.name}
+              <h3 className="font-heading font-black text-foreground leading-snug text-sm tracking-tight group-hover:text-primary transition-colors line-clamp-1">
+                {toTitleCase(pharmacy.name)}
               </h3>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -151,7 +152,7 @@ export function PharmacyCard({ pharmacy, isSelected, userLocation, onSelect, isF
           <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-0.5">
             <p className="flex items-center gap-1.5 text-xs text-foreground/80 line-clamp-1">
               <MapPin className="h-3.5 w-3.5 text-primary shrink-0" strokeWidth={2.5} />
-              <span className="truncate">{pharmacy.address}</span>
+              <span className="truncate">{toTitleCase(pharmacy.address)}</span>
             </p>
             {pharmacy.openingHours && (
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground line-clamp-1">

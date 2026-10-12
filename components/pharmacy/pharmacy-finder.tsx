@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { useQuery } from '@tanstack/react-query'
 import { SearchControls } from './search-controls'
 import { PharmacyList } from './pharmacy-list'
+import { HealthFacilityList } from './health-facility-list'
+import { FireStationList } from './fire-station-list'
 import { GlobalDutyCalendar } from './global-duty-calendar'
 import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -20,18 +22,44 @@ import {
   sortPharmacies,
   type Pharmacy,
 } from '@/lib/pharmacy-data'
-import { PharmacyService } from '@/lib/api'
-import { Pill, Crosshair, MapPin, SlidersHorizontal, List, Map as MapIcon, ArrowLeft, CalendarDays } from 'lucide-react'
+import type { HealthFacility } from '@/lib/health-facility-data'
+import type { FireStation } from '@/lib/fire-station-data'
+import { FireStationService, HealthFacilityService, PharmacyService } from '@/lib/api'
+import {
+  Pill,
+  HeartPulse,
+  Flame,
+  Crosshair,
+  MapPin,
+  SlidersHorizontal,
+  List,
+  Map as MapIcon,
+  ArrowLeft,
+  CalendarDays,
+} from 'lucide-react'
 import { getDeviceId, calculateDistance, getEffectiveDutyDate, cn } from '@/lib/utils'
+import { normalizeLocalityName, localityKey, toTitleCase } from '@/lib/locality-utils'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-const JUJUY_CITIES = [
-  'ABRA PAMPA', 'CALILEGUA', 'EL CARMEN', 'FRAILE PINTADO', 'HUMAHUACA',
-  'LA ESPERANZA', 'LA MENDIETA', 'LA QUIACA', 'LDOR. GRAL SAN MARTIN',
-  'MONTERRICO', 'PALPALA', 'PERICO', 'SAN PEDRO DE JUJUY',
-  'SAN SALVADOR DE JUJUY', 'TILCARA', 'YUTO',
+const JUJUY_CANONICAL_CITIES = [
+  'Abra Pampa',
+  'Calilegua',
+  'El Carmen',
+  'Fraile Pintado',
+  'Humahuaca',
+  'La Esperanza',
+  'La Mendieta',
+  'La Quiaca',
+  'Libertador Gral. San Martín',
+  'Monterrico',
+  'Palpalá',
+  'Perico',
+  'San Pedro de Jujuy',
+  'San Salvador de Jujuy',
+  'Tilcara',
+  'Yuto',
 ]
 
 const dateInputValue = (date: Date) => {
@@ -41,13 +69,15 @@ const dateInputValue = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
-const normalizeSearch = (value: string) => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLocaleLowerCase('es')
-  .trim()
+const normalizeSearch = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es')
+    .trim()
 
 type TravelMode = 'driving' | 'walking' | 'cycling'
+type ActiveFinderTab = 'pharmacies' | 'health' | 'fire'
 
 // Dynamically import the map to avoid SSR issues with Leaflet
 const PharmacyMap = dynamic(
@@ -60,7 +90,7 @@ const PharmacyMap = dynamic(
           <div className="animate-pulse bg-primary/20 rounded-full p-4">
             <Pill className="h-8 w-8 text-primary" strokeWidth={2.5} />
           </div>
-          <p className="text-muted-foreground text-sm font-medium italic">Cargando mapa nacional...</p>
+          <p className="text-muted-foreground text-sm font-medium italic">Cargando mapa provincial...</p>
         </div>
       </div>
     ),
@@ -68,9 +98,12 @@ const PharmacyMap = dynamic(
 )
 
 export function PharmacyFinder() {
+  const [activeTab, setActiveTab] = useState<ActiveFinderTab>('pharmacies')
   const [radius, setRadius] = useState(5)
   const [isLocating, setIsLocating] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null)
+  const [selectedHealthFacility, setSelectedHealthFacility] = useState<HealthFacility | null>(null)
+  const [selectedFireStation, setSelectedFireStation] = useState<FireStation | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [searchCenter, setSearchCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
@@ -79,6 +112,7 @@ export function PharmacyFinder() {
   const [selectedDate, setSelectedDate] = useState(dateInputValue(getEffectiveDutyDate()))
   const [searchQuery, setSearchQuery] = useState('')
   const [travelMode, setTravelMode] = useState<TravelMode>('driving')
+
   // Mobile-specific UI states
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
@@ -110,7 +144,7 @@ export function PharmacyFinder() {
         (error) => {
           setIsLocating(false)
           const message = error.code === 1
-            ? 'Para mostrarte las farmacias más cercanas, habilitá el permiso desde el candado del navegador y probá otra vez.'
+            ? 'Para mostrarte los servicios más cercanos, habilitá el permiso de ubicación en el navegador.'
             : error.code === 2
               ? 'No pudimos detectar tu ubicación. Revisá que el GPS o los servicios de ubicación estén activos.'
               : 'La ubicación tardó demasiado. Volvé a intentarlo cuando tengas una mejor señal.'
@@ -129,7 +163,7 @@ export function PharmacyFinder() {
     } else {
       setIsLocating(false)
       toast.error('Ubicación no disponible', {
-        description: 'Tu navegador no permite obtener la ubicación. Podés buscar por localidad y fecha.',
+        description: 'Tu navegador no permite obtener la ubicación. Podés buscar por localidad.',
         action: { label: 'Intentar de nuevo', onClick: handleUseMyLocation },
       })
     }
@@ -142,14 +176,12 @@ export function PharmacyFinder() {
     }
   }, [])
 
-  // Data Fetching
+  // Data Fetching: Pharmacies
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
     queryKey: searchMode === 'locality'
       ? ['pharmacies', 'locality', selectedCity, selectedDate]
       : ['pharmacies', 'nearby', searchCenter[0], searchCenter[1], radius, selectedDate],
     queryFn: async () => {
-      // The duty calendar is Argentina-based. Keep the selected calendar day
-      // stable even if the browser or server runs in another timezone.
       const effectiveDate = new Date(`${selectedDate}T12:00:00-03:00`).toISOString()
       if (searchMode === 'locality') {
         return PharmacyService.getByDate(effectiveDate, selectedCity || undefined)
@@ -160,13 +192,26 @@ export function PharmacyFinder() {
     retry: false,
   })
 
-  // Group pharmacies by location and calculate distance client-side for accuracy
+  // Data Fetching: Health Facilities (Unified IDEJuy datasets 45, 46, 47, 48)
+  const { data: rawHealthFacilities = [], isLoading: isHealthLoading } = useQuery({
+    queryKey: ['health-facilities', 'idejuy'],
+    queryFn: () => HealthFacilityService.getAll(),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  })
+
+  // Data Fetching: Fire Stations (IDEJuy dataset 151)
+  const { data: rawFireStations = [], isLoading: isFireLoading } = useQuery({
+    queryKey: ['fire-stations', 'idejuy'],
+    queryFn: () => FireStationService.getAll(),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  })
+
+  // Group pharmacies by location and calculate distance
   const groupedPharmacies = useMemo(() => {
     const grouped = groupPharmacies(rawPharmacies)
 
-    // A distance is meaningful only when it comes from the user's real
-    // position. The visual map center changes when a marker is selected and
-    // must never be treated as the user's location.
     if (!userLocation) {
       return grouped.map((pharmacy) => ({ ...pharmacy, distance: undefined }))
     }
@@ -183,7 +228,33 @@ export function PharmacyFinder() {
     toggleNotifications,
   } = useFavoriteNotifications(groupedPharmacies, favoriteIds, selectedDate)
 
-  // Filter by radius when searching nearby, then sort all returned categories.
+  // Enriched Health Facilities with distances
+  const enrichedHealthFacilities = useMemo<HealthFacility[]>(() => {
+    if (!userLocation) {
+      return rawHealthFacilities.map((facility) => ({ ...facility, distance: undefined }))
+    }
+    return rawHealthFacilities
+      .map((facility) => ({
+        ...facility,
+        distance: calculateDistance(userLocation[0], userLocation[1], facility.lat, facility.lng),
+      }))
+      .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
+  }, [rawHealthFacilities, userLocation])
+
+  // Enriched Fire Stations with distances
+  const enrichedFireStations = useMemo<FireStation[]>(() => {
+    if (!userLocation) {
+      return rawFireStations.map((station) => ({ ...station, distance: undefined }))
+    }
+    return rawFireStations
+      .map((station) => ({
+        ...station,
+        distance: calculateDistance(userLocation[0], userLocation[1], station.lat, station.lng),
+      }))
+      .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
+  }, [rawFireStations, userLocation])
+
+  // Filter Pharmacies
   const filteredPharmacies = useMemo(() => {
     const result = searchMode === 'locality'
       ? groupedPharmacies
@@ -201,15 +272,139 @@ export function PharmacyFinder() {
     return sortPharmacies(searched)
   }, [groupedPharmacies, radius, searchMode, searchQuery])
 
-  const isLoading = isDataLoading || isLocating
+  // Filter Health Facilities
+  const filteredHealthFacilities = useMemo(() => {
+    let list: HealthFacility[] = enrichedHealthFacilities
+
+    if (searchMode === 'locality' && selectedCity) {
+      const selectedKey = localityKey(selectedCity)
+      list = list.filter((facility) => localityKey(facility.locality) === selectedKey)
+    } else if (searchMode === 'nearby' && userLocation) {
+      list = list.filter((facility) => facility.distance !== undefined && facility.distance <= radius)
+    }
+
+    const query = normalizeSearch(searchQuery)
+    if (query) {
+      list = list.filter((facility) =>
+        normalizeSearch([
+          facility.name,
+          facility.locality,
+          facility.type,
+          facility.authority,
+          facility.jurisdiction,
+        ].join(' ')).includes(query)
+      )
+    }
+
+    return list
+  }, [enrichedHealthFacilities, searchMode, selectedCity, userLocation, radius, searchQuery])
+
+  // Filter Fire Stations
+  const filteredFireStations = useMemo(() => {
+    let list: FireStation[] = enrichedFireStations
+
+    if (searchMode === 'locality' && selectedCity) {
+      const selectedKey = localityKey(selectedCity)
+      list = list.filter((station) => localityKey(station.locality) === selectedKey)
+    } else if (searchMode === 'nearby' && userLocation) {
+      list = list.filter((station) => station.distance !== undefined && station.distance <= radius)
+    }
+
+    const query = normalizeSearch(searchQuery)
+    if (query) {
+      list = list.filter((station) =>
+        normalizeSearch([
+          station.name,
+          station.locality,
+          station.type,
+          station.authority,
+          station.description,
+        ].join(' ')).includes(query)
+      )
+    }
+
+    return list
+  }, [enrichedFireStations, searchMode, selectedCity, userLocation, radius, searchQuery])
+
+  // Available Cities for the Active Tab (with real-time count badges)
+  const availableCitiesForActiveTab = useMemo(() => {
+    if (activeTab === 'pharmacies') {
+      const countsMap = new Map<string, number>()
+      groupedPharmacies.forEach((pharmacy) => {
+        const canonical = normalizeLocalityName(pharmacy.city || '')
+        countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
+      })
+
+      return JUJUY_CANONICAL_CITIES.map((name) => ({
+        name,
+        count: countsMap.get(name),
+      }))
+    }
+
+    if (activeTab === 'health') {
+      const countsMap = new Map<string, number>()
+      rawHealthFacilities.forEach((facility) => {
+        const canonical = normalizeLocalityName(facility.locality)
+        countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
+      })
+
+      const list: Array<{ name: string; count: number }> = []
+      countsMap.forEach((count, name) => {
+        list.push({ name, count })
+      })
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    }
+
+    // activeTab === 'fire'
+    const countsMap = new Map<string, number>()
+    rawFireStations.forEach((station) => {
+      const canonical = normalizeLocalityName(station.locality)
+      countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
+    })
+
+    const list: Array<{ name: string; count: number }> = []
+    countsMap.forEach((count, name) => {
+      list.push({ name, count })
+    })
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  }, [activeTab, groupedPharmacies, rawHealthFacilities, rawFireStations])
+
+  const isLoading = isDataLoading || isLocating || (activeTab === 'health' && isHealthLoading) || (activeTab === 'fire' && isFireLoading)
 
   const handleSelectPharmacy = useCallback((pharmacy: Pharmacy | null) => {
     setSelectedPharmacy(pharmacy)
     if (pharmacy) {
+      setSelectedHealthFacility(null)
+      setSelectedFireStation(null)
       setMapCenter([pharmacy.lat, pharmacy.lng])
-      // On mobile, if a pharmacy was chosen from expanded sheet, collapse to partial to show map route
       setMobileSheetState('partial')
     }
+  }, [])
+
+  const handleSelectHealthFacility = useCallback((facility: HealthFacility | null) => {
+    setSelectedHealthFacility(facility)
+    if (facility) {
+      setSelectedPharmacy(null)
+      setSelectedFireStation(null)
+      setMapCenter([facility.lat, facility.lng])
+      setMobileSheetState('partial')
+    }
+  }, [])
+
+  const handleSelectFireStation = useCallback((station: FireStation | null) => {
+    setSelectedFireStation(station)
+    if (station) {
+      setSelectedPharmacy(null)
+      setSelectedHealthFacility(null)
+      setMapCenter([station.lat, station.lng])
+      setMobileSheetState('partial')
+    }
+  }, [])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedPharmacy(null)
+    setSelectedHealthFacility(null)
+    setSelectedFireStation(null)
   }, [])
 
   const handleToggleFavorite = useCallback((pharmacy: Pharmacy) => {
@@ -222,30 +417,145 @@ export function PharmacyFinder() {
     setSelectedDate(date)
     setSelectedCity(city)
     setSearchMode('locality')
-    setSelectedPharmacy(null)
+    handleClearSelection()
     setMapCenter([-24.1858, -65.2995])
     setMobileSheetState('expanded')
     setIsCalendarOpen(false)
-  }, [])
+  }, [handleClearSelection])
+
+  const isAnyEntitySelected = Boolean(selectedPharmacy || selectedHealthFacility || selectedFireStation)
+
+  // Tab Selector Bar
+  const renderTabSwitcher = () => (
+    <div className="grid grid-cols-3 gap-1 p-1 bg-muted/60 rounded-2xl border border-border/50">
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('pharmacies')
+          handleClearSelection()
+        }}
+        className={cn(
+          'flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-xl text-xs font-bold transition-all',
+          activeTab === 'pharmacies'
+            ? 'bg-card text-emerald-700 dark:text-emerald-400 shadow-sm font-black'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        aria-selected={activeTab === 'pharmacies'}
+      >
+        <Pill className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <span className="truncate">Farmacias</span>
+        <span className="text-[10px] font-semibold opacity-80 shrink-0">({filteredPharmacies.length})</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('health')
+          handleClearSelection()
+        }}
+        className={cn(
+          'flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-xl text-xs font-bold transition-all',
+          activeTab === 'health'
+            ? 'bg-card text-rose-700 dark:text-rose-400 shadow-sm font-black'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        aria-selected={activeTab === 'health'}
+      >
+        <HeartPulse className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+        <span className="truncate">Salud</span>
+        <span className="text-[10px] font-semibold opacity-80 shrink-0">({filteredHealthFacilities.length})</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('fire')
+          handleClearSelection()
+        }}
+        className={cn(
+          'flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-xl text-xs font-bold transition-all',
+          activeTab === 'fire'
+            ? 'bg-card text-orange-700 dark:text-orange-400 shadow-sm font-black'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        aria-selected={activeTab === 'fire'}
+      >
+        <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
+        <span className="truncate">Bomberos</span>
+        <span className="text-[10px] font-semibold opacity-80 shrink-0">({filteredFireStations.length})</span>
+      </button>
+    </div>
+  )
+
+  // Dynamic Card List Content
+  const renderActiveList = (isMobileSheet = false) => {
+    if (activeTab === 'pharmacies') {
+      return (
+        <PharmacyList
+          pharmacies={filteredPharmacies}
+          selectedPharmacy={selectedPharmacy}
+          userLocation={userLocation}
+          onSelectPharmacy={handleSelectPharmacy}
+          isLoading={isLoading}
+          viewMode="map"
+          hideHeader={isMobileSheet}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      )
+    }
+
+    if (activeTab === 'health') {
+      return (
+        <HealthFacilityList
+          facilities={filteredHealthFacilities}
+          selectedFacility={selectedHealthFacility}
+          userLocation={userLocation}
+          onSelectFacility={handleSelectHealthFacility}
+          isLoading={isLoading}
+        />
+      )
+    }
+
+    return (
+      <FireStationList
+        stations={filteredFireStations}
+        selectedStation={selectedFireStation}
+        userLocation={userLocation}
+        onSelectStation={handleSelectFireStation}
+        isLoading={isLoading}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background">
-      {/* Top Navbar (Responsive for Mobile & Desktop) */}
+      {/* Top Navbar */}
       <header className="h-14 border-b bg-card/95 backdrop-blur-md shadow-sm z-50 flex items-center justify-between px-3 sm:px-6 shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="h-10 w-10 shrink-0" aria-hidden="true">
             <Image
               src="/farmajuy-icon.png"
-              alt=""
+              alt="Logo SaludJUY"
               width={40}
               height={40}
               priority
               className="h-10 w-10 object-contain drop-shadow-sm"
             />
           </div>
-          <h1 className="text-base sm:text-lg font-heading font-black text-foreground tracking-tighter leading-tight truncate">
-            FarmaJUY
-          </h1>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-base sm:text-lg font-heading font-black text-foreground tracking-tight leading-none truncate">
+                SaludJUY
+              </h1>
+              <span className="hidden sm:inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                Jujuy Esencial
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground font-semibold leading-tight truncate">
+              Farmacias de turno · Centros de Salud · Bomberos
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -273,10 +583,10 @@ export function PharmacyFinder() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden relative">
-        {/* Desktop Sidebar: hidden on mobile (< md) */}
-        <div className="hidden md:flex w-[380px] flex-col border-r bg-card/50 backdrop-blur-sm z-40 shadow-xl shrink-0">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex w-[390px] flex-col border-r bg-card/50 backdrop-blur-sm z-40 shadow-xl shrink-0">
           {/* Search Controls Container */}
-          <div className="p-4 border-b bg-muted/20 space-y-3">
+          <div className="p-3.5 border-b bg-muted/20 space-y-3">
             <SearchControls
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -290,22 +600,17 @@ export function PharmacyFinder() {
               onCityChange={setSelectedCity}
               selectedDate={selectedDate}
               onDateChange={setSelectedDate}
-              cities={JUJUY_CITIES}
+              cities={availableCitiesForActiveTab}
+              activeTab={activeTab}
             />
+
+            {/* Category Navigation Tabs */}
+            {renderTabSwitcher()}
           </div>
 
-          {/* Pharmacy List Container */}
+          {/* Cards List Container */}
           <div className="flex-1 overflow-hidden">
-            <PharmacyList
-              pharmacies={filteredPharmacies}
-              selectedPharmacy={selectedPharmacy}
-              userLocation={userLocation}
-              onSelectPharmacy={handleSelectPharmacy}
-              isLoading={isLoading}
-              viewMode="map"
-              favoriteIds={favoriteIds}
-              onToggleFavorite={handleToggleFavorite}
-            />
+            {renderActiveList(false)}
           </div>
         </div>
 
@@ -313,11 +618,17 @@ export function PharmacyFinder() {
         <div className="flex-1 relative z-0 w-full h-full">
           <PharmacyMap
             pharmacies={filteredPharmacies}
+            healthFacilities={filteredHealthFacilities}
+            fireStations={filteredFireStations}
             center={mapCenter}
             selectedPharmacy={selectedPharmacy}
             onSelectPharmacy={handleSelectPharmacy}
+            selectedHealthFacility={selectedHealthFacility}
+            onSelectHealthFacility={handleSelectHealthFacility}
+            selectedFireStation={selectedFireStation}
+            onSelectFireStation={handleSelectFireStation}
             userLocation={isLocating ? null : userLocation}
-            fitToPharmacies={searchMode === 'locality'}
+            fitToResults={searchMode === 'locality'}
             travelMode={travelMode}
             onTravelModeChange={setTravelMode}
             favoriteIds={favoriteIds}
@@ -327,7 +638,7 @@ export function PharmacyFinder() {
           {/* Mobile-Only Overlays & Controls: hidden on md+ */}
           <div className="md:hidden">
             {/* Top Compact Search Pill or Back Button */}
-            {!selectedPharmacy ? (
+            {!isAnyEntitySelected ? (
               <div className="absolute top-3 inset-x-3 z-30 pointer-events-auto">
                 <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md rounded-2xl p-2 shadow-lg border border-border/60">
                   <button
@@ -342,10 +653,10 @@ export function PharmacyFinder() {
                       <p className="text-xs font-bold text-foreground leading-tight truncate">
                         {searchMode === 'nearby'
                           ? (userLocation ? 'Cerca de mi ubicación' : 'Buscar por radio')
-                          : (selectedCity || 'Todas las localidades')}
+                          : (selectedCity ? normalizeLocalityName(selectedCity) : 'Todas las localidades')}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-medium truncate">
-                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
+                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} farmacias · {filteredHealthFacilities.length} salud · {filteredFireStations.length} cuarteles
                       </p>
                     </div>
                     <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-[10px] font-bold text-foreground shrink-0 border border-border/50">
@@ -372,10 +683,10 @@ export function PharmacyFinder() {
                   size="sm"
                   variant="outline"
                   className="rounded-full bg-card/95 backdrop-blur-md shadow-md border border-border/80 text-xs font-bold gap-1.5 h-9 px-3.5 hover:bg-card active:scale-95 transition-all text-foreground"
-                  onClick={() => handleSelectPharmacy(null)}
+                  onClick={handleClearSelection}
                 >
                   <ArrowLeft className="h-3.5 w-3.5 text-primary" />
-                  <span>Volver a farmacias</span>
+                  <span>Volver a la lista</span>
                 </Button>
               </div>
             )}
@@ -386,7 +697,7 @@ export function PharmacyFinder() {
                 <DialogHeader className="pb-2">
                   <DialogTitle className="text-base font-bold flex items-center gap-2">
                     <SlidersHorizontal className="h-4 w-4 text-primary" />
-                    Buscar y filtrar farmacias
+                    Buscar y filtrar servicios
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
@@ -406,21 +717,34 @@ export function PharmacyFinder() {
                     onCityChange={setSelectedCity}
                     selectedDate={selectedDate}
                     onDateChange={setSelectedDate}
-                    cities={JUJUY_CITIES}
+                    cities={availableCitiesForActiveTab}
+                    activeTab={activeTab}
                   />
+
+                  <div className="pt-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      Categoría
+                    </p>
+                    {renderTabSwitcher()}
+                  </div>
 
                   <Button
                     className="w-full h-11 text-xs font-black uppercase tracking-wider shadow-md mt-2"
                     onClick={() => setIsFilterModalOpen(false)}
                   >
-                    Ver {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia' : 'farmacias'}
+                    Ver {activeTab === 'pharmacies'
+                      ? `${filteredPharmacies.length} farmacias`
+                      : activeTab === 'health'
+                        ? `${filteredHealthFacilities.length} efectores de salud`
+                        : `${filteredFireStations.length} cuarteles`
+                    }
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
 
             {/* Floating Quick GPS Button on Map */}
-            <div className={cn("absolute right-3.5 z-30 flex flex-col gap-2 pointer-events-auto transition-all", selectedPharmacy ? "bottom-[calc(55dvh+12px)] sm:bottom-24" : "bottom-24")}>
+            <div className={cn("absolute right-3.5 z-30 flex flex-col gap-2 pointer-events-auto transition-all", isAnyEntitySelected ? "bottom-[calc(55dvh+12px)] sm:bottom-24" : "bottom-24")}>
               <Button
                 size="icon"
                 variant="secondary"
@@ -433,8 +757,8 @@ export function PharmacyFinder() {
               </Button>
             </div>
 
-            {/* Floating Center Map/List Toggle Pill (only when not inspecting a single route) */}
-            {!selectedPharmacy && (
+            {/* Floating Center Map/List Toggle Pill */}
+            {!isAnyEntitySelected && (
               <div className="absolute bottom-[76px] inset-x-0 z-30 flex justify-center pointer-events-none">
                 <Button
                   size="sm"
@@ -444,7 +768,14 @@ export function PharmacyFinder() {
                   {mobileSheetState === 'collapsed' ? (
                     <>
                       <List className="h-3.5 w-3.5" />
-                      <span>Ver lista ({filteredPharmacies.length})</span>
+                      <span>
+                        Ver lista ({activeTab === 'pharmacies'
+                          ? filteredPharmacies.length
+                          : activeTab === 'health'
+                            ? filteredHealthFacilities.length
+                            : filteredFireStations.length
+                        })
+                      </span>
                     </>
                   ) : (
                     <>
@@ -456,8 +787,8 @@ export function PharmacyFinder() {
               </div>
             )}
 
-            {/* Mobile Bottom Sheet for Pharmacy List (only when not inspecting a single route) */}
-            {!selectedPharmacy && (
+            {/* Mobile Bottom Sheet for Active Category List */}
+            {!isAnyEntitySelected && (
               <BottomSheet
                 isOpen={true}
                 sheetState={mobileSheetState}
@@ -465,9 +796,17 @@ export function PharmacyFinder() {
                 peekTitle={
                   <div className="flex items-center justify-between w-full pr-1">
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                      <span className={cn(
+                        "h-2 w-2 rounded-full animate-pulse",
+                        activeTab === 'pharmacies' ? "bg-emerald-500" : activeTab === 'health' ? "bg-rose-500" : "bg-orange-500"
+                      )} />
                       <span className="font-heading font-black text-xs text-foreground uppercase tracking-tight">
-                        {filteredPharmacies.length} {filteredPharmacies.length === 1 ? 'farmacia de turno' : 'farmacias de turno'}
+                        {activeTab === 'pharmacies'
+                          ? `${filteredPharmacies.length} ${filteredPharmacies.length === 1 ? 'farmacia de turno' : 'farmacias de turno'}`
+                          : activeTab === 'health'
+                            ? `${filteredHealthFacilities.length} ${filteredHealthFacilities.length === 1 ? 'centro de salud' : 'centros de salud'}`
+                            : `${filteredFireStations.length} ${filteredFireStations.length === 1 ? 'cuartel de bomberos' : 'cuarteles de bomberos'}`
+                        }
                       </span>
                     </div>
                     <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -476,17 +815,12 @@ export function PharmacyFinder() {
                   </div>
                 }
               >
-                <PharmacyList
-                  pharmacies={filteredPharmacies}
-                  selectedPharmacy={selectedPharmacy}
-                  userLocation={userLocation}
-                  onSelectPharmacy={handleSelectPharmacy}
-                  isLoading={isLoading}
-                  viewMode="map"
-                  hideHeader={true}
-                  favoriteIds={favoriteIds}
-                  onToggleFavorite={handleToggleFavorite}
-                />
+                <div className="p-2 border-b bg-card">
+                  {renderTabSwitcher()}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {renderActiveList(true)}
+                </div>
               </BottomSheet>
             )}
           </div>
@@ -498,7 +832,7 @@ export function PharmacyFinder() {
         onOpenChange={setIsCalendarOpen}
         selectedDate={selectedDate}
         selectedCity={selectedCity}
-        cities={JUJUY_CITIES}
+        cities={JUJUY_CANONICAL_CITIES}
         onApply={handleApplyCalendarDate}
       />
     </div>
