@@ -7,7 +7,8 @@ import type { FireStation } from '@/lib/fire-station-data'
 import { IDEJUY_FIRE_STATIONS_URL } from '@/lib/fire-station-data'
 import type { HealthFacility, HealthFacilityType } from '@/lib/health-facility-data'
 import { getHealthDatasetUrl, getHealthDatasetDescription, IDEJUY_HEALTH_MAP_URL } from '@/lib/health-facility-data'
-import { cn } from '@/lib/utils'
+import { toTitleCase } from '@/lib/locality-utils'
+import { cn, formatDuration } from '@/lib/utils'
 import {
   Bike,
   Building2,
@@ -181,6 +182,10 @@ interface PharmacyMapProps {
   center: [number, number]
   selectedPharmacy?: Pharmacy | null
   onSelectPharmacy?: (pharmacy: Pharmacy | null) => void
+  selectedHealthFacility?: HealthFacility | null
+  onSelectHealthFacility?: (facility: HealthFacility | null) => void
+  selectedFireStation?: FireStation | null
+  onSelectFireStation?: (station: FireStation | null) => void
   userLocation?: [number, number] | null
   fitToResults?: boolean
   travelMode: TravelMode
@@ -197,6 +202,10 @@ function PharmacyMapContent({
   center,
   selectedPharmacy,
   onSelectPharmacy,
+  selectedHealthFacility: propSelectedHealthFacility,
+  onSelectHealthFacility,
+  selectedFireStation: propSelectedFireStation,
+  onSelectFireStation,
   userLocation,
   fitToResults = false,
   travelMode,
@@ -211,8 +220,21 @@ function PharmacyMapContent({
   const [showPharmacies, setShowPharmacies] = useState(true)
   const [showHealthFacilities, setShowHealthFacilities] = useState(true)
   const [showFireStations, setShowFireStations] = useState(true)
-  const [selectedHealthFacility, setSelectedHealthFacility] = useState<HealthFacility | null>(null)
-  const [selectedFireStation, setSelectedFireStation] = useState<FireStation | null>(null)
+  const [internalHealthFacility, setInternalHealthFacility] = useState<HealthFacility | null>(null)
+  const [internalFireStation, setInternalFireStation] = useState<FireStation | null>(null)
+
+  const selectedHealthFacility = propSelectedHealthFacility !== undefined ? propSelectedHealthFacility : internalHealthFacility
+  const selectedFireStation = propSelectedFireStation !== undefined ? propSelectedFireStation : internalFireStation
+
+  const updateSelectedHealthFacility = (facility: HealthFacility | null) => {
+    setInternalHealthFacility(facility)
+    onSelectHealthFacility?.(facility)
+  }
+
+  const updateSelectedFireStation = (station: FireStation | null) => {
+    setInternalFireStation(station)
+    onSelectFireStation?.(station)
+  }
 
   const visibleResults = useMemo(() => [
     ...(showPharmacies ? pharmacies : []),
@@ -222,12 +244,24 @@ function PharmacyMapContent({
 
   useEffect(() => {
     if (selectedHealthFacility && !healthFacilities.some((facility) => facility.id === selectedHealthFacility.id)) {
-      setSelectedHealthFacility(null)
+      updateSelectedHealthFacility(null)
     }
     if (selectedFireStation && !fireStations.some((station) => station.id === selectedFireStation.id)) {
-      setSelectedFireStation(null)
+      updateSelectedFireStation(null)
     }
   }, [healthFacilities, fireStations, selectedHealthFacility, selectedFireStation])
+
+  useEffect(() => {
+    if (selectedHealthFacility && mapRef.current) {
+      mapRef.current.setView([selectedHealthFacility.lat, selectedHealthFacility.lng], Math.max(mapRef.current.getZoom(), 15))
+    }
+  }, [selectedHealthFacility])
+
+  useEffect(() => {
+    if (selectedFireStation && mapRef.current) {
+      mapRef.current.setView([selectedFireStation.lat, selectedFireStation.lng], Math.max(mapRef.current.getZoom(), 15))
+    }
+  }, [selectedFireStation])
 
   // Some official records share the same geocoded point. Keep their real
   // coordinates for routing, but fan the visual markers out so none is hidden.
@@ -263,8 +297,8 @@ function PharmacyMapContent({
   useEffect(() => {
     if (mapRef.current && selectedPharmacy) {
       mapRef.current.setView([selectedPharmacy.lat, selectedPharmacy.lng], 16)
-      setSelectedHealthFacility(null)
-      setSelectedFireStation(null)
+      updateSelectedHealthFacility(null)
+      updateSelectedFireStation(null)
     }
     setShowInstructions(false)
   }, [selectedPharmacy])
@@ -536,8 +570,8 @@ function PharmacyMapContent({
 
   const handleSelectHealthFacility = (facility: HealthFacility) => {
     onSelectPharmacy?.(null)
-    setSelectedFireStation(null)
-    setSelectedHealthFacility(facility)
+    updateSelectedFireStation(null)
+    updateSelectedHealthFacility(facility)
     mapRef.current?.setView([facility.lat, facility.lng], Math.max(mapRef.current.getZoom(), 15))
   }
 
@@ -596,8 +630,8 @@ function PharmacyMapContent({
 
   const handleSelectFireStation = (station: FireStation) => {
     onSelectPharmacy?.(null)
-    setSelectedHealthFacility(null)
-    setSelectedFireStation(station)
+    updateSelectedHealthFacility(null)
+    updateSelectedFireStation(station)
     mapRef.current?.setView([station.lat, station.lng], Math.max(mapRef.current.getZoom(), 15))
   }
 
@@ -675,8 +709,8 @@ function PharmacyMapContent({
             zIndexOffset={selectedPharmacy?.id === pharmacy.id ? 900 : 300}
             eventHandlers={{
               click: () => {
-                setSelectedHealthFacility(null)
-                setSelectedFireStation(null)
+                updateSelectedHealthFacility(null)
+                updateSelectedFireStation(null)
                 onSelectPharmacy?.(pharmacy)
               },
             }}
@@ -707,7 +741,7 @@ function PharmacyMapContent({
             className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showHealthFacilities ? 'bg-red-500/10 text-red-700 dark:text-red-300 font-extrabold' : 'text-muted-foreground opacity-65')}
             onClick={() => {
               setShowHealthFacilities((visible) => !visible)
-              if (showHealthFacilities) setSelectedHealthFacility(null)
+              if (showHealthFacilities) updateSelectedHealthFacility(null)
             }}
             aria-pressed={showHealthFacilities}
           >
@@ -722,7 +756,7 @@ function PharmacyMapContent({
             className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showFireStations ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300 font-extrabold' : 'text-muted-foreground opacity-65')}
             onClick={() => {
               setShowFireStations((visible) => !visible)
-              if (showFireStations) setSelectedFireStation(null)
+              if (showFireStations) updateSelectedFireStation(null)
             }}
             aria-pressed={showFireStations}
           >
@@ -756,7 +790,7 @@ function PharmacyMapContent({
                 {selectedHealthFacility.type}
               </Badge>
               <h3 className="font-heading text-sm font-black uppercase leading-tight tracking-tight text-foreground">
-                {selectedHealthFacility.name}
+                {toTitleCase(selectedHealthFacility.name)}
               </h3>
               <p className="mt-0.5 text-[11px] leading-snug font-medium text-foreground/80">
                 {getHealthDatasetDescription(selectedHealthFacility.type)}
@@ -770,7 +804,7 @@ function PharmacyMapContent({
               size="icon"
               variant="ghost"
               className="h-8 w-8 shrink-0 rounded-full"
-              onClick={() => setSelectedHealthFacility(null)}
+              onClick={() => updateSelectedHealthFacility(null)}
               aria-label="Cerrar información del centro de salud"
             >
               <X className="h-4 w-4" />
@@ -811,7 +845,7 @@ function PharmacyMapContent({
                 {selectedFireStation.type}
               </Badge>
               <h3 className="font-heading text-sm font-black uppercase leading-tight tracking-tight text-foreground">
-                {selectedFireStation.name}
+                {toTitleCase(selectedFireStation.name)}
               </h3>
               <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                 {[selectedFireStation.description, selectedFireStation.authority].filter(Boolean).join(' · ')}
@@ -822,7 +856,7 @@ function PharmacyMapContent({
               size="icon"
               variant="ghost"
               className="h-8 w-8 shrink-0 rounded-full"
-              onClick={() => setSelectedFireStation(null)}
+              onClick={() => updateSelectedFireStation(null)}
               aria-label="Cerrar información del cuartel de bomberos"
             >
               <X className="h-4 w-4" />
@@ -882,11 +916,11 @@ function PharmacyMapContent({
                   </span>
                 )}
               </div>
-              <h3 className="text-base font-heading font-black text-foreground truncate uppercase tracking-tight">
-                {selectedPharmacy.name}
+              <h3 className="text-base font-heading font-black text-foreground truncate tracking-tight">
+                {toTitleCase(selectedPharmacy.name)}
               </h3>
               <p className="text-xs text-muted-foreground truncate">
-                {selectedPharmacy.address}
+                {toTitleCase(selectedPharmacy.address)}
               </p>
               {selectedPharmacy.openingHours && (
                 <p className="text-[11px] text-muted-foreground/90 font-medium truncate mt-0.5">
@@ -954,7 +988,7 @@ function PharmacyMapContent({
               <div className="mt-2.5 flex items-center justify-between">
                 <div>
                   <span className="text-base font-black text-foreground">
-                    {routeSummary.durationMinutes} min
+                    {formatDuration(routeSummary.durationMinutes)}
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground ml-1.5">
                     ({routeSummary.distanceKm.toFixed(1)} km)

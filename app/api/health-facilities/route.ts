@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { HealthFacility, HealthFacilityType } from '@/lib/health-facility-data'
 import { IDEJUY_HEALTH_DATASETS } from '@/lib/health-facility-data'
 import { addNearestLocalities, getIdejuyLocalities } from '@/lib/idejuy-localities'
+import { proxyToCore } from '@/lib/server/backend-bff'
 
 const IDEJUY_WFS_URL = 'https://geo.idejuy.jujuy.gob.ar/geoserver/ows'
 const CACHE_SECONDS = 6 * 60 * 60
@@ -89,8 +90,22 @@ async function fetchLayer(layer: {
 }
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const queryString = searchParams.toString()
+  const corePath = `/api/health-facilities${queryString ? `?${queryString}` : ''}`
+
+  // 1. Delegar a ar.farmacias-core
   try {
-    const { searchParams } = new URL(request.url)
+    const coreResponse = await proxyToCore(corePath)
+    if (coreResponse.ok) {
+      return coreResponse
+    }
+  } catch (err) {
+    console.warn('[health-facilities] Fallback a IDEJuy directo:', err)
+  }
+
+  // 2. Fallback resiliente directo a IDEJuy
+  try {
     const datasetParam = searchParams.get('dataset')
 
     // Permitir filtrar por dataset específico (ej: ?dataset=48) o unificar todas las fuentes por defecto

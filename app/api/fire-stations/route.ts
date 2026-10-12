@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { FireStation } from '@/lib/fire-station-data'
 import { addNearestLocalities, getIdejuyLocalities } from '@/lib/idejuy-localities'
+import { proxyToCore } from '@/lib/server/backend-bff'
 
 const IDEJUY_WFS_URL = 'https://geo.idejuy.jujuy.gob.ar/geoserver/ows'
 const CACHE_SECONDS = 6 * 60 * 60
@@ -47,6 +48,17 @@ function mapFeature(feature: IdejuyFireStationFeature): Omit<FireStation, 'local
 }
 
 export async function GET() {
+  // 1. Delegar a ar.farmacias-core
+  try {
+    const coreResponse = await proxyToCore('/api/fire-stations')
+    if (coreResponse.ok) {
+      return coreResponse
+    }
+  } catch (err) {
+    console.warn('[fire-stations] Fallback a IDEJuy directo:', err)
+  }
+
+  // 2. Fallback resiliente directo a IDEJuy
   const params = new URLSearchParams({
     service: 'WFS',
     version: '1.0.0',

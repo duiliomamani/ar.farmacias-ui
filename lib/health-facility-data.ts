@@ -12,6 +12,7 @@ export interface HealthFacility {
   locality: string
   datasetId?: number
   datasetUrl?: string
+  distance?: number
 }
 
 export interface HealthDatasetMeta {

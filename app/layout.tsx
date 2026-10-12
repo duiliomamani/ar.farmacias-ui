@@ -18,14 +18,14 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  applicationName: 'FarmaJUY',
-  title: 'FarmaJUY - Farmacias de turno en Jujuy',
-  description: 'Encontrá farmacias de turno, permanentes y de atención voluntaria en Jujuy, con ubicación, indicaciones y reportes de la comunidad.',
-  keywords: ['farmacias de turno', 'farmacias', 'salud', 'emergencias', 'Jujuy', 'Argentina'],
+  applicationName: 'SaludJUY',
+  title: 'SaludJUY - Farmacias de turno, Centros de Salud y Bomberos en Jujuy',
+  description: 'Mapa interactivo de servicios esenciales en Jujuy: farmacias de turno, nodos sanitarios, CAPS, CIC, puestos de salud y cuarteles de bomberos.',
+  keywords: ['farmacias de turno', 'centros de salud', 'CAPS', 'hospital', 'bomberos', 'emergencias', 'Jujuy', 'Argentina'],
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'FarmaJUY',
+    title: 'SaludJUY',
   },
 }
 

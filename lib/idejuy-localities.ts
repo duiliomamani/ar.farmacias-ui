@@ -1,4 +1,5 @@
 import 'server-only'
+import { normalizeLocalityName } from './locality-utils'
 
 const IDEJUY_WFS_URL = 'https://geo.idejuy.jujuy.gob.ar/geoserver/ows'
 
@@ -78,6 +79,7 @@ export function addNearestLocalities<T extends GeocodedItem>(items: T[], localit
         : closest
     }, null)
 
-    return { ...item, locality: nearest?.name || 'Sin localidad' }
+    const rawLocality = nearest?.name ? String(nearest.name).trim() : 'Sin localidad'
+    return { ...item, locality: normalizeLocalityName(rawLocality) }
   })
 }
