@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 
-const BACKEND_URL = process.env.FARMACIAS_API_URL || 'http://localhost:5001'
+// CONDORJUY_API_URL is the canonical private URL for the core service.
+// Keep the old name as a temporary fallback so an existing deployment keeps working
+// while its Vercel environment variable is migrated.
+const BACKEND_URL = process.env.CONDORJUY_API_URL
+  || process.env.CONDORJUY_API
+  || process.env.FARMACIAS_API_URL
+  || 'http://localhost:5001'
 
 export async function proxyToCore(path: string, init?: RequestInit): Promise<NextResponse> {
   const controller = new AbortController()
