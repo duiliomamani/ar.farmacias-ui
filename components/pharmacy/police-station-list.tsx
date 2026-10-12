@@ -5,7 +5,6 @@ import { PoliceStationCard } from './police-station-card'
 import type { PoliceStation } from '@/lib/police-station-data'
 import { Shield, Phone, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AdBanner } from '@/components/ad-banner'
 
 interface PoliceStationListProps {
   stations: PoliceStation[]
@@ -86,7 +85,6 @@ export function PoliceStationList({
             <p className="text-xs text-muted-foreground mt-2 font-medium leading-relaxed">
               Probá seleccionar otra localidad o ampliar el radio de búsqueda.
             </p>
-            <AdBanner className="mt-8 max-w-[360px]" />
           </div>
         ) : (
           stations.map((station) => (

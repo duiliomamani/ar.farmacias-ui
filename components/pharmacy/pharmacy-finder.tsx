@@ -13,6 +13,7 @@ import { GlobalDutyCalendar } from './global-duty-calendar'
 import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
+import { AdBanner } from '@/components/ad-banner'
 import { Feedback } from '@/components/feedback'
 import { PwaActions } from '@/components/pwa-actions'
 import { usePharmacyFavorites } from '@/hooks/use-pharmacy-favorites'
@@ -680,6 +681,10 @@ export function PharmacyFinder() {
             favoriteIds={favoriteIds}
             onToggleFavorite={handleToggleFavorite}
           />
+
+          <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex justify-center px-3 md:top-3 md:justify-end md:px-4">
+            <AdBanner className="pointer-events-auto w-full max-w-[360px] shadow-xl" />
+          </div>
 
           {/* Mobile-Only Overlays & Controls: hidden on md+ */}
           <div className="md:hidden">

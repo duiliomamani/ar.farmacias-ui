@@ -8,7 +8,6 @@ import { Pill, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getRecommendedPharmacy } from '@/lib/pharmacy-ranking'
 import { RecommendedPharmacyCard } from './recommended-pharmacy-card'
-import { AdBanner } from '@/components/ad-banner'
 
 interface PharmacyListProps {
   pharmacies: Pharmacy[]
@@ -88,7 +87,6 @@ export function PharmacyList({
             <p className="text-xs text-muted-foreground mt-2 font-medium leading-relaxed">
               Probá borrar la búsqueda, elegir otra localidad o aumentar el radio.
             </p>
-            <AdBanner className="mt-8 max-w-[360px]" />
           </div>
         ) : (
           <div className="space-y-4">
