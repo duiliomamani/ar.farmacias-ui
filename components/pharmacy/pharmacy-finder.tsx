@@ -684,6 +684,10 @@ export function PharmacyFinder() {
             onToggleFavorite={handleToggleFavorite}
           />
 
+          <div className="pointer-events-none absolute inset-x-0 top-24 z-[450] hidden justify-center md:flex">
+            <AdBanner className="pointer-events-auto w-full max-w-[360px] shadow-xl" />
+          </div>
+
           {/* Mobile-Only Overlays & Controls: hidden on md+ */}
           <div className="md:hidden">
             {/* Top Compact Search Pill or Back Button */}
