@@ -156,8 +156,19 @@ function FitResultBounds({ points, enabled }: { points: Array<{ lat: number; lng
 
   useEffect(() => {
     if (!enabled || points.length === 0) return
+    const validPoints = points.filter(
+      (point) =>
+        Number.isFinite(point.lat) &&
+        Number.isFinite(point.lng) &&
+        (point.lat !== 0 || point.lng !== 0) &&
+        point.lat <= -21.0 &&
+        point.lat >= -26.0 &&
+        point.lng <= -64.0 &&
+        point.lng >= -68.5
+    )
+    if (validPoints.length === 0) return
     const L = require('leaflet')
-    const bounds = L.latLngBounds(points.map((point) => [point.lat, point.lng]))
+    const bounds = L.latLngBounds(validPoints.map((point) => [point.lat, point.lng]))
     map.fitBounds(bounds, { padding: [36, 36], maxZoom: 14 })
   }, [enabled, points, map])
 
