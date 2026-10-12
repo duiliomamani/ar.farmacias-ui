@@ -13,7 +13,6 @@ import { GlobalDutyCalendar } from './global-duty-calendar'
 import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
-import { AdBanner } from '@/components/ad-banner'
 import { Feedback } from '@/components/feedback'
 import { PwaActions } from '@/components/pwa-actions'
 import { usePharmacyFavorites } from '@/hooks/use-pharmacy-favorites'
@@ -603,8 +602,6 @@ export function PharmacyFinder() {
             </p>
           </div>
         </div>
-
-        <AdBanner placement="header" className="mx-4 hidden lg:block" />
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Button

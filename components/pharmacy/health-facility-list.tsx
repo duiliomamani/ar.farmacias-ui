@@ -6,6 +6,7 @@ import type { HealthFacility, HealthFacilityType } from '@/lib/health-facility-d
 import { HeartPulse, Hospital, Users, Cross, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { AdBanner } from '@/components/ad-banner'
 
 interface HealthFacilityListProps {
   facilities: HealthFacility[]
@@ -113,6 +114,7 @@ export function HealthFacilityList({
             <p className="text-xs text-muted-foreground mt-2 font-medium leading-relaxed">
               Probá cambiar la localidad, seleccionar otro filtro de salud o ampliar el radio de búsqueda.
             </p>
+            <AdBanner className="mt-8 max-w-[360px]" />
           </div>
         ) : (
           filtered.map((facility) => (
