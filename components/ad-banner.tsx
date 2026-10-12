@@ -32,18 +32,18 @@ export function AdBanner({ className = '' }: AdBannerProps) {
   if (!clientId || !slotId) return null
 
   return (
-    <aside className={`overflow-hidden rounded-lg border border-border/40 bg-muted/20 ${className}`} aria-label="Publicidad">
-      <p className="px-2 pt-1 text-center text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">
+    <aside className={`h-[68px] shrink-0 overflow-hidden rounded-lg border border-border/40 bg-muted/20 ${className}`} aria-label="Publicidad">
+      <p className="h-[18px] px-2 text-center text-[9px] font-medium uppercase tracking-wider leading-[18px] text-muted-foreground/70">
         Publicidad
       </p>
       <ins
         ref={adRef}
-        className="adsbygoogle block min-h-[50px] w-full"
-        style={{ display: 'block' }}
+        className="adsbygoogle block h-[50px] w-full"
+        style={{ display: 'block', height: '50px' }}
         data-ad-client={clientId}
         data-ad-slot={slotId}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
+        data-ad-format="horizontal"
+        data-full-width-responsive="false"
       />
     </aside>
   )

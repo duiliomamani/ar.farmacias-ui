@@ -648,8 +648,6 @@ export function PharmacyFinder() {
               activeTab={activeTab}
             />
 
-            <AdBanner className="hidden md:block" />
-
             {/* Category Navigation Tabs */}
             {renderTabSwitcher()}
           </div>
@@ -658,6 +656,7 @@ export function PharmacyFinder() {
           <div className="flex-1 overflow-hidden">
             {renderActiveList(false)}
           </div>
+          <AdBanner className="mx-3 mb-3 hidden md:block" />
         </div>
 
         {/* Map Panel (Mobile & Desktop) */}
