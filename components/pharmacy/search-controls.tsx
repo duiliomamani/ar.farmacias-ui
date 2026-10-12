@@ -27,7 +27,7 @@ interface SearchControlsProps {
   selectedDate: string
   onDateChange: (value: string) => void
   cities: (string | LocalityOption)[]
-  activeTab?: 'pharmacies' | 'health' | 'fire'
+  activeTab?: 'pharmacies' | 'health' | 'fire' | 'police'
   className?: string
 }
 

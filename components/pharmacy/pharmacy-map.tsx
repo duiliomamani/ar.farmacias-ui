@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic'
 import type { Pharmacy } from '@/lib/pharmacy-data'
 import type { FireStation } from '@/lib/fire-station-data'
 import { IDEJUY_FIRE_STATIONS_URL } from '@/lib/fire-station-data'
+import type { PoliceStation } from '@/lib/police-station-data'
+import { IDEJUY_POLICE_STATIONS_URL } from '@/lib/police-station-data'
 import type { HealthFacility, HealthFacilityType } from '@/lib/health-facility-data'
 import { getHealthDatasetUrl, getHealthDatasetDescription, IDEJUY_HEALTH_MAP_URL } from '@/lib/health-facility-data'
 import { toTitleCase } from '@/lib/locality-utils'
@@ -23,6 +25,7 @@ import {
   Navigation,
   Pill,
   Phone,
+  Shield,
   ShieldAlert,
   Stethoscope,
   Users,
@@ -179,6 +182,7 @@ interface PharmacyMapProps {
   pharmacies: Pharmacy[]
   healthFacilities?: HealthFacility[]
   fireStations?: FireStation[]
+  policeStations?: PoliceStation[]
   center: [number, number]
   selectedPharmacy?: Pharmacy | null
   onSelectPharmacy?: (pharmacy: Pharmacy | null) => void
@@ -186,6 +190,8 @@ interface PharmacyMapProps {
   onSelectHealthFacility?: (facility: HealthFacility | null) => void
   selectedFireStation?: FireStation | null
   onSelectFireStation?: (station: FireStation | null) => void
+  selectedPoliceStation?: PoliceStation | null
+  onSelectPoliceStation?: (station: PoliceStation | null) => void
   userLocation?: [number, number] | null
   fitToResults?: boolean
   travelMode: TravelMode
@@ -199,6 +205,7 @@ function PharmacyMapContent({
   pharmacies,
   healthFacilities = [],
   fireStations = [],
+  policeStations = [],
   center,
   selectedPharmacy,
   onSelectPharmacy,
@@ -206,6 +213,8 @@ function PharmacyMapContent({
   onSelectHealthFacility,
   selectedFireStation: propSelectedFireStation,
   onSelectFireStation,
+  selectedPoliceStation: propSelectedPoliceStation,
+  onSelectPoliceStation,
   userLocation,
   fitToResults = false,
   travelMode,
@@ -220,11 +229,14 @@ function PharmacyMapContent({
   const [showPharmacies, setShowPharmacies] = useState(true)
   const [showHealthFacilities, setShowHealthFacilities] = useState(true)
   const [showFireStations, setShowFireStations] = useState(true)
+  const [showPoliceStations, setShowPoliceStations] = useState(true)
   const [internalHealthFacility, setInternalHealthFacility] = useState<HealthFacility | null>(null)
   const [internalFireStation, setInternalFireStation] = useState<FireStation | null>(null)
+  const [internalPoliceStation, setInternalPoliceStation] = useState<PoliceStation | null>(null)
 
   const selectedHealthFacility = propSelectedHealthFacility !== undefined ? propSelectedHealthFacility : internalHealthFacility
   const selectedFireStation = propSelectedFireStation !== undefined ? propSelectedFireStation : internalFireStation
+  const selectedPoliceStation = propSelectedPoliceStation !== undefined ? propSelectedPoliceStation : internalPoliceStation
 
   const updateSelectedHealthFacility = (facility: HealthFacility | null) => {
     setInternalHealthFacility(facility)
@@ -236,11 +248,17 @@ function PharmacyMapContent({
     onSelectFireStation?.(station)
   }
 
+  const updateSelectedPoliceStation = (station: PoliceStation | null) => {
+    setInternalPoliceStation(station)
+    onSelectPoliceStation?.(station)
+  }
+
   const visibleResults = useMemo(() => [
     ...(showPharmacies ? pharmacies : []),
     ...(showHealthFacilities ? healthFacilities : []),
     ...(showFireStations ? fireStations : []),
-  ], [showPharmacies, pharmacies, showHealthFacilities, healthFacilities, showFireStations, fireStations])
+    ...(showPoliceStations ? policeStations : []),
+  ], [showPharmacies, pharmacies, showHealthFacilities, healthFacilities, showFireStations, fireStations, showPoliceStations, policeStations])
 
   useEffect(() => {
     if (selectedHealthFacility && !healthFacilities.some((facility) => facility.id === selectedHealthFacility.id)) {
@@ -249,7 +267,10 @@ function PharmacyMapContent({
     if (selectedFireStation && !fireStations.some((station) => station.id === selectedFireStation.id)) {
       updateSelectedFireStation(null)
     }
-  }, [healthFacilities, fireStations, selectedHealthFacility, selectedFireStation])
+    if (selectedPoliceStation && !policeStations.some((station) => station.id === selectedPoliceStation.id)) {
+      updateSelectedPoliceStation(null)
+    }
+  }, [healthFacilities, fireStations, policeStations, selectedHealthFacility, selectedFireStation, selectedPoliceStation])
 
   useEffect(() => {
     if (selectedHealthFacility && mapRef.current) {
@@ -262,6 +283,12 @@ function PharmacyMapContent({
       mapRef.current.setView([selectedFireStation.lat, selectedFireStation.lng], Math.max(mapRef.current.getZoom(), 15))
     }
   }, [selectedFireStation])
+
+  useEffect(() => {
+    if (selectedPoliceStation && mapRef.current) {
+      mapRef.current.setView([selectedPoliceStation.lat, selectedPoliceStation.lng], Math.max(mapRef.current.getZoom(), 15))
+    }
+  }, [selectedPoliceStation])
 
   // Some official records share the same geocoded point. Keep their real
   // coordinates for routing, but fan the visual markers out so none is hidden.
@@ -299,6 +326,7 @@ function PharmacyMapContent({
       mapRef.current.setView([selectedPharmacy.lat, selectedPharmacy.lng], 16)
       updateSelectedHealthFacility(null)
       updateSelectedFireStation(null)
+      updateSelectedPoliceStation(null)
     }
     setShowInstructions(false)
   }, [selectedPharmacy])
@@ -571,6 +599,7 @@ function PharmacyMapContent({
   const handleSelectHealthFacility = (facility: HealthFacility) => {
     onSelectPharmacy?.(null)
     updateSelectedFireStation(null)
+    updateSelectedPoliceStation(null)
     updateSelectedHealthFacility(facility)
     mapRef.current?.setView([facility.lat, facility.lng], Math.max(mapRef.current.getZoom(), 15))
   }
@@ -631,7 +660,74 @@ function PharmacyMapContent({
   const handleSelectFireStation = (station: FireStation) => {
     onSelectPharmacy?.(null)
     updateSelectedHealthFacility(null)
+    updateSelectedPoliceStation(null)
     updateSelectedFireStation(station)
+    mapRef.current?.setView([station.lat, station.lng], Math.max(mapRef.current.getZoom(), 15))
+  }
+
+  const createPoliceStationIcon = (station: PoliceStation, isSelected: boolean) => {
+    if (typeof window === 'undefined') return undefined
+    const L = require('leaflet')
+    const width = isSelected ? 42 : 34
+    const height = isSelected ? 52 : 44
+    const pinColor = '#2563eb'
+
+    let tag = 'COMISARÍA'
+    if (station.type === 'Sub Comisaría') tag = 'SUB-COM.'
+    else if (station.type === 'Destacamento') tag = 'DESTAC.'
+    else if (station.type === 'Unidad Regional') tag = 'UR'
+
+    return L.divIcon({
+      className: 'police-station-marker',
+      html: `
+        <div style="
+          width: ${width}px;
+          height: ${height}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          transform: ${isSelected ? 'scale(1.15) translateY(-4px)' : 'scale(1)'};
+          transition: transform 0.2s ease-out;
+          filter: drop-shadow(0 4px 10px rgba(37, 99, 235, 0.45));
+        ">
+          <div style="
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e3a8a;
+            color: #dbeafe;
+            font-size: 8px;
+            font-weight: 900;
+            padding: 1px 4.5px;
+            border-radius: 999px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+            z-index: 5;
+          ">${tag}</div>
+          <svg width="${width}" height="${height}" viewBox="0 0 34 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 43C17 43 31.5 28.5 31.5 16C31.5 8 25 1.5 17 1.5C9 1.5 2.5 8 2.5 16C2.5 28.5 17 43 17 43Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="17" cy="16" r="11" fill="rgba(255,255,255,0.18)"/>
+            <path d="M17 8.5l6.5 3v5.5c0 4.5-2.8 7.5-6.5 8.5-3.7-1-6.5-4-6.5-8.5v-5.5l6.5-3z" fill="#ffffff"/>
+            <path d="M17 11.2l4.2 2v3.6c0 2.9-1.8 4.9-4.2 5.5-2.4-.6-4.2-2.6-4.2-5.5v-3.6l4.2-2z" fill="#2563eb"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height - 1],
+      popupAnchor: [0, -height],
+    })
+  }
+
+  const handleSelectPoliceStation = (station: PoliceStation) => {
+    onSelectPharmacy?.(null)
+    updateSelectedHealthFacility(null)
+    updateSelectedFireStation(null)
+    updateSelectedPoliceStation(station)
     mapRef.current?.setView([station.lat, station.lng], Math.max(mapRef.current.getZoom(), 15))
   }
 
@@ -701,6 +797,18 @@ function PharmacyMapContent({
           />
         ))}
 
+        {showPoliceStations && policeStations.map((station) => (
+          <Marker
+            key={station.id}
+            position={[station.lat, station.lng]}
+            icon={createPoliceStationIcon(station, selectedPoliceStation?.id === station.id)}
+            zIndexOffset={selectedPoliceStation?.id === station.id ? 800 : 200}
+            alt={`Comisaría / Seguridad: ${station.name}`}
+            title={station.name}
+            eventHandlers={{ click: () => handleSelectPoliceStation(station) }}
+          />
+        ))}
+
         {showPharmacies && pharmacies.map((pharmacy) => (
           <Marker
             key={pharmacy.id}
@@ -711,58 +819,74 @@ function PharmacyMapContent({
               click: () => {
                 updateSelectedHealthFacility(null)
                 updateSelectedFireStation(null)
+                updateSelectedPoliceStation(null)
                 onSelectPharmacy?.(pharmacy)
               },
             }}
           />
         ))}
       </MapContainer>
-      <div className="absolute inset-x-3 top-[72px] z-[400] md:right-auto md:top-3 md:w-[370px]">
-        <div className="grid grid-cols-3 gap-1 rounded-2xl border bg-card/95 p-1.5 shadow-lg backdrop-blur-md" aria-label="Filtrar puntos del mapa">
+      <div className="absolute inset-x-2 top-[72px] z-[400] md:right-auto md:top-3 md:w-[490px]">
+        <div className="grid grid-cols-4 gap-1 rounded-2xl border bg-card/95 p-1.5 shadow-lg backdrop-blur-md" aria-label="Filtrar puntos del mapa">
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showPharmacies ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-extrabold' : 'text-muted-foreground opacity-65')}
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1 text-[9px] font-bold sm:text-xs', showPharmacies ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-extrabold' : 'text-muted-foreground opacity-65')}
             onClick={() => {
               setShowPharmacies((visible) => !visible)
               if (showPharmacies) onSelectPharmacy?.(null)
             }}
             aria-pressed={showPharmacies}
           >
-            <Pill className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <Pill className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="truncate">Farmacias</span>
-            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px]">{pharmacies.length}</span>
+            <span className="rounded-full bg-background/80 px-1 py-0.5 text-[9px] shrink-0">{pharmacies.length}</span>
           </Button>
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showHealthFacilities ? 'bg-red-500/10 text-red-700 dark:text-red-300 font-extrabold' : 'text-muted-foreground opacity-65')}
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1 text-[9px] font-bold sm:text-xs', showHealthFacilities ? 'bg-red-500/10 text-red-700 dark:text-red-300 font-extrabold' : 'text-muted-foreground opacity-65')}
             onClick={() => {
               setShowHealthFacilities((visible) => !visible)
               if (showHealthFacilities) updateSelectedHealthFacility(null)
             }}
             aria-pressed={showHealthFacilities}
           >
-            <HeartPulse className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+            <HeartPulse className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
             <span className="truncate">Salud</span>
-            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px]">{healthFacilities.length}</span>
+            <span className="rounded-full bg-background/80 px-1 py-0.5 text-[9px] shrink-0">{healthFacilities.length}</span>
           </Button>
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1.5 text-[10px] font-bold sm:text-xs', showFireStations ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300 font-extrabold' : 'text-muted-foreground opacity-65')}
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1 text-[9px] font-bold sm:text-xs', showFireStations ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300 font-extrabold' : 'text-muted-foreground opacity-65')}
             onClick={() => {
               setShowFireStations((visible) => !visible)
               if (showFireStations) updateSelectedFireStation(null)
             }}
             aria-pressed={showFireStations}
           >
-            <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+            <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
             <span className="truncate">Bomberos</span>
-            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px]">{fireStations.length}</span>
+            <span className="rounded-full bg-background/80 px-1 py-0.5 text-[9px] shrink-0">{fireStations.length}</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={cn('h-9 min-w-0 gap-1 rounded-xl px-1 text-[9px] font-bold sm:text-xs', showPoliceStations ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 font-extrabold' : 'text-muted-foreground opacity-65')}
+            onClick={() => {
+              setShowPoliceStations((visible) => !visible)
+              if (showPoliceStations) updateSelectedPoliceStation(null)
+            }}
+            aria-pressed={showPoliceStations}
+          >
+            <Shield className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="truncate">Comisarías</span>
+            <span className="rounded-full bg-background/80 px-1 py-0.5 text-[9px] shrink-0">{policeStations.length}</span>
           </Button>
         </div>
       </div>
@@ -882,6 +1006,56 @@ function PharmacyMapContent({
             </Button>
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground">Fuente: IDEJuy (Dataset #151) · Ministerio de Seguridad de Jujuy</p>
+        </div>
+      )}
+      {selectedPoliceStation && (
+        <div className="absolute inset-x-3 top-[128px] z-[500] rounded-2xl border border-blue-500/25 bg-card/98 p-4 shadow-2xl backdrop-blur-md md:inset-x-auto md:right-4 md:top-4 md:w-[360px]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" aria-hidden="true">
+              <Shield className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Badge className="mb-1 bg-blue-600 text-[9px] font-black uppercase tracking-widest text-white">
+                {selectedPoliceStation.type || 'COMISARÍA'}
+              </Badge>
+              <h3 className="font-heading text-sm font-black uppercase leading-tight tracking-tight text-foreground">
+                {toTitleCase(selectedPoliceStation.name)}
+              </h3>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                {[selectedPoliceStation.description, selectedPoliceStation.authority, selectedPoliceStation.locality].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 rounded-full"
+              onClick={() => updateSelectedPoliceStation(null)}
+              aria-label="Cerrar información de la comisaría"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              type="button"
+              className="h-10 flex-1 gap-2 rounded-xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700 shadow-sm"
+              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedPoliceStation.lat},${selectedPoliceStation.lng}`, '_blank', 'noopener,noreferrer')}
+            >
+              <Navigation className="h-4 w-4" /> Cómo llegar
+            </Button>
+            <Button asChild type="button" variant="outline" className="h-10 gap-1.5 rounded-xl border-blue-500/30 text-blue-700 hover:bg-blue-500/10 dark:text-blue-300 font-bold text-xs" title="Llamar al 911">
+              <a href="tel:911" aria-label="Llamar al 911">
+                <Phone className="h-4 w-4" /> 911
+              </a>
+            </Button>
+            <Button asChild size="icon" variant="outline" className="h-10 w-10 rounded-xl" title="Ver fuente oficial en IDEJuy">
+              <a href={IDEJUY_POLICE_STATIONS_URL} target="_blank" rel="noreferrer" aria-label="Ver comisarías en IDEJuy">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">Fuente: IDEJuy (Dataset #150) · Ministerio de Seguridad de Jujuy</p>
         </div>
       )}
       {selectedPharmacy && (

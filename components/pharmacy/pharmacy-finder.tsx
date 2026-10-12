@@ -8,6 +8,7 @@ import { SearchControls } from './search-controls'
 import { PharmacyList } from './pharmacy-list'
 import { HealthFacilityList } from './health-facility-list'
 import { FireStationList } from './fire-station-list'
+import { PoliceStationList } from './police-station-list'
 import { GlobalDutyCalendar } from './global-duty-calendar'
 import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -24,11 +25,13 @@ import {
 } from '@/lib/pharmacy-data'
 import type { HealthFacility } from '@/lib/health-facility-data'
 import type { FireStation } from '@/lib/fire-station-data'
-import { FireStationService, HealthFacilityService, PharmacyService } from '@/lib/api'
+import type { PoliceStation } from '@/lib/police-station-data'
+import { FireStationService, HealthFacilityService, PharmacyService, PoliceStationService } from '@/lib/api'
 import {
   Pill,
   HeartPulse,
   Flame,
+  Shield,
   Crosshair,
   MapPin,
   SlidersHorizontal,
@@ -71,7 +74,7 @@ const dateInputValue = (date: Date) => {
 
 
 type TravelMode = 'driving' | 'walking' | 'cycling'
-type ActiveFinderTab = 'pharmacies' | 'health' | 'fire'
+type ActiveFinderTab = 'pharmacies' | 'health' | 'fire' | 'police'
 
 // Dynamically import the map to avoid SSR issues with Leaflet
 const PharmacyMap = dynamic(
@@ -98,6 +101,7 @@ export function PharmacyFinder() {
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null)
   const [selectedHealthFacility, setSelectedHealthFacility] = useState<HealthFacility | null>(null)
   const [selectedFireStation, setSelectedFireStation] = useState<FireStation | null>(null)
+  const [selectedPoliceStation, setSelectedPoliceStation] = useState<PoliceStation | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [searchCenter, setSearchCenter] = useState<[number, number]>([-24.1858, -65.2995])
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
@@ -202,6 +206,14 @@ export function PharmacyFinder() {
     retry: 1,
   })
 
+  // Data Fetching: Police Stations (IDEJuy dataset 150)
+  const { data: rawPoliceStations = [], isLoading: isPoliceLoading } = useQuery({
+    queryKey: ['police-stations', 'idejuy'],
+    queryFn: () => PoliceStationService.getAll(),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  })
+
   // Group pharmacies by location and calculate distance
   const groupedPharmacies = useMemo(() => {
     const grouped = groupPharmacies(rawPharmacies)
@@ -248,6 +260,19 @@ export function PharmacyFinder() {
       .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
   }, [rawFireStations, userLocation])
 
+  // Enriched Police Stations with distances
+  const enrichedPoliceStations = useMemo<PoliceStation[]>(() => {
+    if (!userLocation) {
+      return rawPoliceStations.map((station) => ({ ...station, distance: undefined }))
+    }
+    return rawPoliceStations
+      .map((station) => ({
+        ...station,
+        distance: calculateDistance(userLocation[0], userLocation[1], station.lat, station.lng),
+      }))
+      .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
+  }, [rawPoliceStations, userLocation])
+
   // Filter Pharmacies
   const filteredPharmacies = useMemo(() => {
     let result: Pharmacy[] = groupedPharmacies
@@ -290,6 +315,20 @@ export function PharmacyFinder() {
     return list
   }, [enrichedFireStations, searchMode, selectedCity, userLocation, radius])
 
+  // Filter Police Stations
+  const filteredPoliceStations = useMemo(() => {
+    let list: PoliceStation[] = enrichedPoliceStations
+
+    if (searchMode === 'locality' && selectedCity) {
+      const selectedKey = localityKey(selectedCity)
+      list = list.filter((station) => localityKey(station.locality) === selectedKey)
+    } else if (searchMode === 'nearby' && userLocation) {
+      list = list.filter((station) => station.distance !== undefined && station.distance <= radius)
+    }
+
+    return list
+  }, [enrichedPoliceStations, searchMode, selectedCity, userLocation, radius])
+
   // Available Cities for the Active Tab (with real-time count badges)
   const availableCitiesForActiveTab = useMemo(() => {
     if (activeTab === 'pharmacies') {
@@ -319,9 +358,23 @@ export function PharmacyFinder() {
       return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
     }
 
-    // activeTab === 'fire'
+    if (activeTab === 'fire') {
+      const countsMap = new Map<string, number>()
+      rawFireStations.forEach((station) => {
+        const canonical = normalizeLocalityName(station.locality)
+        countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
+      })
+
+      const list: Array<{ name: string; count: number }> = []
+      countsMap.forEach((count, name) => {
+        list.push({ name, count })
+      })
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    }
+
+    // activeTab === 'police'
     const countsMap = new Map<string, number>()
-    rawFireStations.forEach((station) => {
+    rawPoliceStations.forEach((station) => {
       const canonical = normalizeLocalityName(station.locality)
       countsMap.set(canonical, (countsMap.get(canonical) || 0) + 1)
     })
@@ -331,15 +384,16 @@ export function PharmacyFinder() {
       list.push({ name, count })
     })
     return list.sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  }, [activeTab, groupedPharmacies, rawHealthFacilities, rawFireStations])
+  }, [activeTab, groupedPharmacies, rawHealthFacilities, rawFireStations, rawPoliceStations])
 
-  const isLoading = isDataLoading || isLocating || (activeTab === 'health' && isHealthLoading) || (activeTab === 'fire' && isFireLoading)
+  const isLoading = isDataLoading || isLocating || (activeTab === 'health' && isHealthLoading) || (activeTab === 'fire' && isFireLoading) || (activeTab === 'police' && isPoliceLoading)
 
   const handleSelectPharmacy = useCallback((pharmacy: Pharmacy | null) => {
     setSelectedPharmacy(pharmacy)
     if (pharmacy) {
       setSelectedHealthFacility(null)
       setSelectedFireStation(null)
+      setSelectedPoliceStation(null)
       setMapCenter([pharmacy.lat, pharmacy.lng])
       setMobileSheetState('partial')
     }
@@ -350,6 +404,7 @@ export function PharmacyFinder() {
     if (facility) {
       setSelectedPharmacy(null)
       setSelectedFireStation(null)
+      setSelectedPoliceStation(null)
       setMapCenter([facility.lat, facility.lng])
       setMobileSheetState('partial')
     }
@@ -360,6 +415,18 @@ export function PharmacyFinder() {
     if (station) {
       setSelectedPharmacy(null)
       setSelectedHealthFacility(null)
+      setSelectedPoliceStation(null)
+      setMapCenter([station.lat, station.lng])
+      setMobileSheetState('partial')
+    }
+  }, [])
+
+  const handleSelectPoliceStation = useCallback((station: PoliceStation | null) => {
+    setSelectedPoliceStation(station)
+    if (station) {
+      setSelectedPharmacy(null)
+      setSelectedHealthFacility(null)
+      setSelectedFireStation(null)
       setMapCenter([station.lat, station.lng])
       setMobileSheetState('partial')
     }
@@ -369,6 +436,7 @@ export function PharmacyFinder() {
     setSelectedPharmacy(null)
     setSelectedHealthFacility(null)
     setSelectedFireStation(null)
+    setSelectedPoliceStation(null)
   }, [])
 
   const handleToggleFavorite = useCallback((pharmacy: Pharmacy) => {
@@ -387,7 +455,7 @@ export function PharmacyFinder() {
     setIsCalendarOpen(false)
   }, [handleClearSelection])
 
-  const isAnyEntitySelected = Boolean(selectedPharmacy || selectedHealthFacility || selectedFireStation)
+  const isAnyEntitySelected = Boolean(selectedPharmacy || selectedHealthFacility || selectedFireStation || selectedPoliceStation)
 
   // Tab Selector Bar
   const renderTabSwitcher = () => (
