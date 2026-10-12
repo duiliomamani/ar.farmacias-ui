@@ -69,12 +69,6 @@ const dateInputValue = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
-const normalizeSearch = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('es')
-    .trim()
 
 type TravelMode = 'driving' | 'walking' | 'cycling'
 type ActiveFinderTab = 'pharmacies' | 'health' | 'fire'
@@ -110,7 +104,6 @@ export function PharmacyFinder() {
   const [searchMode, setSearchMode] = useState<'nearby' | 'locality'>('nearby')
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedDate, setSelectedDate] = useState(dateInputValue(getEffectiveDutyDate()))
-  const [searchQuery, setSearchQuery] = useState('')
   const [travelMode, setTravelMode] = useState<TravelMode>('driving')
 
   // Mobile-specific UI states
@@ -179,12 +172,13 @@ export function PharmacyFinder() {
   // Data Fetching: Pharmacies
   const { data: rawPharmacies = [], isLoading: isDataLoading } = useQuery({
     queryKey: searchMode === 'locality'
-      ? ['pharmacies', 'locality', selectedCity, selectedDate]
+      ? ['pharmacies', 'locality', selectedDate]
       : ['pharmacies', 'nearby', searchCenter[0], searchCenter[1], radius, selectedDate],
     queryFn: async () => {
       const effectiveDate = new Date(`${selectedDate}T12:00:00-03:00`).toISOString()
       if (searchMode === 'locality') {
-        return PharmacyService.getByDate(effectiveDate, selectedCity || undefined)
+        // Cargar todas las farmacias del día para preservar contadores en vivo de todas las ciudades
+        return PharmacyService.getByDate(effectiveDate)
       }
       const center = userLocation || searchCenter
       return PharmacyService.getNearby(center[0], center[1], radius * 1000, effectiveDate)
@@ -256,21 +250,17 @@ export function PharmacyFinder() {
 
   // Filter Pharmacies
   const filteredPharmacies = useMemo(() => {
-    const result = searchMode === 'locality'
-      ? groupedPharmacies
-      : filterPharmacies(groupedPharmacies, radius)
+    let result: Pharmacy[] = groupedPharmacies
 
-    const query = normalizeSearch(searchQuery)
-    const searched = query
-      ? result.filter((pharmacy) => normalizeSearch([
-          pharmacy.name,
-          pharmacy.address,
-          pharmacy.city,
-        ].filter(Boolean).join(' ')).includes(query))
-      : result
+    if (searchMode === 'locality' && selectedCity) {
+      const selectedKey = localityKey(selectedCity)
+      result = result.filter((pharmacy) => localityKey(pharmacy.city || '') === selectedKey)
+    } else if (searchMode === 'nearby') {
+      result = filterPharmacies(groupedPharmacies, radius)
+    }
 
-    return sortPharmacies(searched)
-  }, [groupedPharmacies, radius, searchMode, searchQuery])
+    return sortPharmacies(result)
+  }, [groupedPharmacies, radius, searchMode, selectedCity])
 
   // Filter Health Facilities
   const filteredHealthFacilities = useMemo(() => {
@@ -283,21 +273,8 @@ export function PharmacyFinder() {
       list = list.filter((facility) => facility.distance !== undefined && facility.distance <= radius)
     }
 
-    const query = normalizeSearch(searchQuery)
-    if (query) {
-      list = list.filter((facility) =>
-        normalizeSearch([
-          facility.name,
-          facility.locality,
-          facility.type,
-          facility.authority,
-          facility.jurisdiction,
-        ].join(' ')).includes(query)
-      )
-    }
-
     return list
-  }, [enrichedHealthFacilities, searchMode, selectedCity, userLocation, radius, searchQuery])
+  }, [enrichedHealthFacilities, searchMode, selectedCity, userLocation, radius])
 
   // Filter Fire Stations
   const filteredFireStations = useMemo(() => {
@@ -310,21 +287,8 @@ export function PharmacyFinder() {
       list = list.filter((station) => station.distance !== undefined && station.distance <= radius)
     }
 
-    const query = normalizeSearch(searchQuery)
-    if (query) {
-      list = list.filter((station) =>
-        normalizeSearch([
-          station.name,
-          station.locality,
-          station.type,
-          station.authority,
-          station.description,
-        ].join(' ')).includes(query)
-      )
-    }
-
     return list
-  }, [enrichedFireStations, searchMode, selectedCity, userLocation, radius, searchQuery])
+  }, [enrichedFireStations, searchMode, selectedCity, userLocation, radius])
 
   // Available Cities for the Active Tab (with real-time count badges)
   const availableCitiesForActiveTab = useMemo(() => {
@@ -588,8 +552,6 @@ export function PharmacyFinder() {
           {/* Search Controls Container */}
           <div className="p-3.5 border-b bg-muted/20 space-y-3">
             <SearchControls
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
               radius={radius}
               onRadiusChange={setRadius}
               onUseMyLocation={handleUseMyLocation}
@@ -702,8 +664,6 @@ export function PharmacyFinder() {
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <SearchControls
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
                     radius={radius}
                     onRadiusChange={setRadius}
                     onUseMyLocation={() => {
