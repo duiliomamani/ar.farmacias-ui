@@ -49,7 +49,7 @@ function mapFeature(feature: IdejuyPoliceStationFeature): Omit<PoliceStation, 'l
 }
 
 export async function GET() {
-  // 1. Delegar a ar.farmacias-core
+  // 1. Delegar a condorjuy-api
   try {
     const coreResponse = await proxyToCore('/api/police-stations')
     if (coreResponse.ok) {
