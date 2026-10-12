@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Open_Sans, Poppins } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import Script from 'next/script'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Providers } from '@/components/providers'
 import './globals.css'
@@ -62,6 +63,14 @@ export default function RootLayout({
           </ThemeProvider>
         </Providers>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
+          <Script
+            async
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}`}
+          />
+        )}
       </body>
     </html>
   )

@@ -13,6 +13,7 @@ import { GlobalDutyCalendar } from './global-duty-calendar'
 import { BottomSheet, type SheetState } from './bottom-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { JujuyDevLinks } from '@/components/jujuy-dev-footer'
+import { AdBanner } from '@/components/ad-banner'
 import { Feedback } from '@/components/feedback'
 import { PwaActions } from '@/components/pwa-actions'
 import { usePharmacyFavorites } from '@/hooks/use-pharmacy-favorites'
@@ -646,6 +647,8 @@ export function PharmacyFinder() {
               cities={availableCitiesForActiveTab}
               activeTab={activeTab}
             />
+
+            <AdBanner className="hidden md:block" />
 
             {/* Category Navigation Tabs */}
             {renderTabSwitcher()}
