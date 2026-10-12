@@ -459,7 +459,7 @@ export function PharmacyFinder() {
 
   // Tab Selector Bar
   const renderTabSwitcher = () => (
-    <div className="grid grid-cols-3 gap-1 p-1 bg-muted/60 rounded-2xl border border-border/50">
+    <div className="grid grid-cols-4 gap-1 p-1 bg-muted/60 rounded-2xl border border-border/50">
       <button
         type="button"
         onClick={() => {
@@ -467,7 +467,7 @@ export function PharmacyFinder() {
           handleClearSelection()
         }}
         className={cn(
-          'flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-xl text-xs font-bold transition-all',
+          'flex items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all',
           activeTab === 'pharmacies'
             ? 'bg-card text-emerald-700 dark:text-emerald-400 shadow-sm font-black'
             : 'text-muted-foreground hover:text-foreground'
@@ -486,7 +486,7 @@ export function PharmacyFinder() {
           handleClearSelection()
         }}
         className={cn(
-          'flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-xl text-xs font-bold transition-all',
+          'flex items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all',
           activeTab === 'health'
             ? 'bg-card text-rose-700 dark:text-rose-400 shadow-sm font-black'
             : 'text-muted-foreground hover:text-foreground'
@@ -505,7 +505,7 @@ export function PharmacyFinder() {
           handleClearSelection()
         }}
         className={cn(
-          'flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-xl text-xs font-bold transition-all',
+          'flex items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all',
           activeTab === 'fire'
             ? 'bg-card text-orange-700 dark:text-orange-400 shadow-sm font-black'
             : 'text-muted-foreground hover:text-foreground'
@@ -515,6 +515,25 @@ export function PharmacyFinder() {
         <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
         <span className="truncate">Bomberos</span>
         <span className="text-[10px] font-semibold opacity-80 shrink-0">({filteredFireStations.length})</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('police')
+          handleClearSelection()
+        }}
+        className={cn(
+          'flex items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all',
+          activeTab === 'police'
+            ? 'bg-card text-blue-700 dark:text-blue-400 shadow-sm font-black'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        aria-selected={activeTab === 'police'}
+      >
+        <Shield className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+        <span className="truncate">Comisarías</span>
+        <span className="text-[10px] font-semibold opacity-80 shrink-0">({filteredPoliceStations.length})</span>
       </button>
     </div>
   )
@@ -549,12 +568,24 @@ export function PharmacyFinder() {
       )
     }
 
+    if (activeTab === 'fire') {
+      return (
+        <FireStationList
+          stations={filteredFireStations}
+          selectedStation={selectedFireStation}
+          userLocation={userLocation}
+          onSelectStation={handleSelectFireStation}
+          isLoading={isLoading}
+        />
+      )
+    }
+
     return (
-      <FireStationList
-        stations={filteredFireStations}
-        selectedStation={selectedFireStation}
+      <PoliceStationList
+        stations={filteredPoliceStations}
+        selectedStation={selectedPoliceStation}
         userLocation={userLocation}
-        onSelectStation={handleSelectFireStation}
+        onSelectStation={handleSelectPoliceStation}
         isLoading={isLoading}
       />
     )
@@ -585,7 +616,7 @@ export function PharmacyFinder() {
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground font-semibold leading-tight truncate">
-              Farmacias de turno · Centros de Salud · Bomberos
+              Farmacias de turno · Centros de Salud · Bomberos · Comisarías
             </p>
           </div>
         </div>
@@ -650,6 +681,7 @@ export function PharmacyFinder() {
             pharmacies={filteredPharmacies}
             healthFacilities={filteredHealthFacilities}
             fireStations={filteredFireStations}
+            policeStations={filteredPoliceStations}
             center={mapCenter}
             selectedPharmacy={selectedPharmacy}
             onSelectPharmacy={handleSelectPharmacy}
@@ -657,6 +689,8 @@ export function PharmacyFinder() {
             onSelectHealthFacility={handleSelectHealthFacility}
             selectedFireStation={selectedFireStation}
             onSelectFireStation={handleSelectFireStation}
+            selectedPoliceStation={selectedPoliceStation}
+            onSelectPoliceStation={handleSelectPoliceStation}
             userLocation={isLocating ? null : userLocation}
             fitToResults={searchMode === 'locality'}
             travelMode={travelMode}
@@ -686,7 +720,7 @@ export function PharmacyFinder() {
                           : (selectedCity ? normalizeLocalityName(selectedCity) : 'Todas las localidades')}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-medium truncate">
-                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} farmacias · {filteredHealthFacilities.length} salud · {filteredFireStations.length} cuarteles
+                        {searchMode === 'nearby' ? `Radio: ${radius} km` : `Turnos: ${selectedDate}`} · {filteredPharmacies.length} farmacias · {filteredHealthFacilities.length} salud · {filteredFireStations.length} cuarteles · {filteredPoliceStations.length} comisarías
                       </p>
                     </div>
                     <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-[10px] font-bold text-foreground shrink-0 border border-border/50">
@@ -764,7 +798,9 @@ export function PharmacyFinder() {
                       ? `${filteredPharmacies.length} farmacias`
                       : activeTab === 'health'
                         ? `${filteredHealthFacilities.length} efectores de salud`
-                        : `${filteredFireStations.length} cuarteles`
+                        : activeTab === 'fire'
+                          ? `${filteredFireStations.length} cuarteles`
+                          : `${filteredPoliceStations.length} dependencias policiales`
                     }
                   </Button>
                 </div>
@@ -801,7 +837,9 @@ export function PharmacyFinder() {
                           ? filteredPharmacies.length
                           : activeTab === 'health'
                             ? filteredHealthFacilities.length
-                            : filteredFireStations.length
+                            : activeTab === 'fire'
+                              ? filteredFireStations.length
+                              : filteredPoliceStations.length
                         })
                       </span>
                     </>
@@ -826,14 +864,22 @@ export function PharmacyFinder() {
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "h-2 w-2 rounded-full animate-pulse",
-                        activeTab === 'pharmacies' ? "bg-emerald-500" : activeTab === 'health' ? "bg-rose-500" : "bg-orange-500"
+                        activeTab === 'pharmacies'
+                          ? "bg-emerald-500"
+                          : activeTab === 'health'
+                            ? "bg-rose-500"
+                            : activeTab === 'fire'
+                              ? "bg-orange-500"
+                              : "bg-blue-500"
                       )} />
                       <span className="font-heading font-black text-xs text-foreground uppercase tracking-tight">
                         {activeTab === 'pharmacies'
                           ? `${filteredPharmacies.length} ${filteredPharmacies.length === 1 ? 'farmacia de turno' : 'farmacias de turno'}`
                           : activeTab === 'health'
                             ? `${filteredHealthFacilities.length} ${filteredHealthFacilities.length === 1 ? 'centro de salud' : 'centros de salud'}`
-                            : `${filteredFireStations.length} ${filteredFireStations.length === 1 ? 'cuartel de bomberos' : 'cuarteles de bomberos'}`
+                            : activeTab === 'fire'
+                              ? `${filteredFireStations.length} ${filteredFireStations.length === 1 ? 'cuartel de bomberos' : 'cuarteles de bomberos'}`
+                              : `${filteredPoliceStations.length} ${filteredPoliceStations.length === 1 ? 'dependencia policial' : 'dependencias policiales'}`
                         }
                       </span>
                     </div>
