@@ -604,6 +604,8 @@ export function PharmacyFinder() {
           </div>
         </div>
 
+        <AdBanner placement="header" className="mx-4 hidden lg:block" />
+
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Button
             type="button"
@@ -656,7 +658,6 @@ export function PharmacyFinder() {
           <div className="flex-1 overflow-hidden">
             {renderActiveList(false)}
           </div>
-          <AdBanner className="mx-3 mb-3 hidden md:block" />
         </div>
 
         {/* Map Panel (Mobile & Desktop) */}
