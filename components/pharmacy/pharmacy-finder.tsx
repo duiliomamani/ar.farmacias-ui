@@ -682,7 +682,7 @@ export function PharmacyFinder() {
             onToggleFavorite={handleToggleFavorite}
           />
 
-          <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex justify-center px-3 md:top-3 md:justify-end md:px-4">
+          <div className="pointer-events-none absolute bottom-14 right-4 z-[450] hidden md:flex">
             <AdBanner className="pointer-events-auto w-full max-w-[360px] shadow-xl" />
           </div>
 
