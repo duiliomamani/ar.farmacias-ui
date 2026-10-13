@@ -114,9 +114,9 @@ export function SearchControls({
                 <SelectItem value="TODAS">
                   Todas las localidades
                 </SelectItem>
-                {uniqueOptions.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
+                {uniqueOptions.map((option) => (
+                  <SelectItem key={option.name} value={option.name}>
+                    {option.name}
                   </SelectItem>
                 ))}
               </SelectContent>
